@@ -25,6 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #ifndef ROSCPP_PUBLICATION_H
 #define ROSCPP_PUBLICATION_H
 
@@ -165,6 +167,11 @@ private:
   size_t max_queue_;
   uint32_t seq_;
   boost::mutex seq_mutex_;
+
+#if AMISHARE_ROS == 1
+  std::string publication_pipename_;
+  int publication_pipe_fd_;
+#endif
 
   typedef std::vector<SubscriberCallbacksPtr> V_Callback;
   V_Callback callbacks_;

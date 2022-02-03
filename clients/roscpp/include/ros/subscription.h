@@ -25,6 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #ifndef ROSCPP_SUBSCRIPTION_H
 #define ROSCPP_SUBSCRIPTION_H
 
@@ -87,6 +89,10 @@ public:
    */
   bool negotiateConnection(const std::string& xmlrpc_uri);
 
+#if AMISHARE_ROS == 1
+  void mainPipeTest(int events);
+#endif
+
   void addLocalConnection(const PublicationPtr& pub);
 
   /**
@@ -105,7 +111,11 @@ public:
    * \brief Called to notify that a new message has arrived from a publisher.
    * Schedules the callback for invokation with the callback queue
    */
+#if AMISHARE_ROS == 1
+  uint32_t handleMessage(const SerializedMessage& m, bool ser, bool nocopy);
+#else
   uint32_t handleMessage(const SerializedMessage& m, bool ser, bool nocopy, const boost::shared_ptr<M_string>& connection_header, const PublisherLinkPtr& link);
+#endif
 
   const std::string datatype();
   const std::string md5sum();
@@ -211,6 +221,13 @@ private:
   boost::mutex callbacks_mutex_;
   V_CallbackInfo callbacks_;
   uint32_t nonconst_callbacks_;
+
+#if AMISHARE_ROS == 1
+  int inotify_fd_;
+  std::string subscription_pipename_;
+  int subscription_pipe_fd_;
+  boost::shared_array<uint8_t> message_read_buffer_;
+#endif
 
   bool dropped_;
   bool shutting_down_;

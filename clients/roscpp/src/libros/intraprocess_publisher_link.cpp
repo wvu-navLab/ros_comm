@@ -32,6 +32,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #include "ros/intraprocess_publisher_link.h"
 #include "ros/intraprocess_subscriber_link.h"
 #include "ros/subscription.h"
@@ -116,10 +118,12 @@ void IntraProcessPublisherLink::handleMessage(const SerializedMessage& m, bool s
 
   SubscriptionPtr parent = parent_.lock();
 
+#if AMISHARE_ROS != 1
   if (parent)
   {
     stats_.drops_ += parent->handleMessage(m, ser, nocopy, header_.getValues(), shared_from_this());
   }
+#endif
 }
 
 std::string IntraProcessPublisherLink::getTransportType()

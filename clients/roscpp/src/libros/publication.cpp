@@ -33,6 +33,12 @@
 #include "ros/serialization.h"
 #include <std_msgs/Header.h>
 
+#if AMISHARE_ROS == 1
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 namespace ros
 {
 
@@ -91,6 +97,19 @@ Publication::Publication(const std::string &name,
   has_header_(has_header),
   intraprocess_subscriber_count_(0)
 {
+#if AMISHARE_ROS == 1
+  std::string pipename2 = ".txt";
+  publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
+
+//if the path includes a directory that doesn't exist, make it before open
+  size_t found = name.find_last_of("/");
+  if (found != std::string::npos && found != 0)
+  {
+    std::string directory = name.substr(0, found);
+    std::string openpath = AMISHARE_ROS_PATH + directory;
+    mkdir(openpath.c_str(), 0775);
+  }
+#endif
 }
 
 Publication::~Publication()
@@ -428,6 +447,18 @@ bool Publication::hasSubscribers()
 
 void Publication::publish(SerializedMessage& m)
 {
+#if AMISHARE_ROS == 1
+  if (m.buf)
+  {
+    //publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
+    publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+
+    write(publication_pipe_fd_, m.buf.get(), m.num_bytes);
+    write(publication_pipe_fd_, "\n", sizeof(char));
+
+    close(publication_pipe_fd_);
+  }
+#else
   if (m.message)
   {
     boost::mutex::scoped_lock lock(subscriber_links_mutex_);
@@ -450,6 +481,7 @@ void Publication::publish(SerializedMessage& m)
     boost::mutex::scoped_lock lock(publish_queue_mutex_);
     publish_queue_.push_back(m);
   }
+#endif
 }
 
 void Publication::processPublishQueue()

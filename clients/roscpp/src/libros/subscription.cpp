@@ -61,6 +61,11 @@
 
 #include <boost/make_shared.hpp>
 
+#if AMISHARE_ROS == 1
+#include <sys/inotify.h>
+#define IN_ROS_READ IN_CLOSE_WRITE
+#endif
+
 using XmlRpc::XmlRpcValue;
 
 namespace ros
@@ -75,6 +80,11 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
 , shutting_down_(false)
 , transport_hints_(transport_hints)
 {
+#if AMISHARE_ROS == 1
+  inotify_fd_ = inotify_init();
+  PollManager::instance()->getPollSet().addSocket(inotify_fd_, boost::bind(&Subscription::mainPipeTest, this, boost::placeholders::_1));
+  PollManager::instance()->getPollSet().addEvents(inotify_fd_, POLLIN);
+#endif
 }
 
 Subscription::~Subscription()
@@ -366,6 +376,14 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
        it != transports.end();
        ++it)
   {
+#if AMISHARE_ROS == 1
+      std::string name = getName();
+      std::string pipename2 = ".txt";
+      subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
+      subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY);
+
+      inotify_add_watch(inotify_fd_, subscription_pipename_.c_str(), IN_ROS_READ);
+#else
     if (*it == "UDP")
     {
       int max_datagram_size = transport_hints_.getMaxDatagramSize();
@@ -387,7 +405,6 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
       udpros_array[2] = network::getHost();
       udpros_array[3] = udp_transport->getServerPort();
       udpros_array[4] = max_datagram_size;
-
       protos_array[protos++] = udpros_array;
     }
     else if (*it == "TCP")
@@ -399,6 +416,7 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
     {
       ROS_WARN("Unsupported transport type hinted: %s, skipping", it->c_str());
     }
+#endif
   }
   params[0] = this_node::getName();
   params[1] = name_;
@@ -444,6 +462,58 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
 
   return true;
 }
+
+#if AMISHARE_ROS == 1
+bool inotify_handle_events(int fd)
+{
+  bool is_something_to_read = false;
+  char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
+  ssize_t len;
+  const struct inotify_event *event;
+  len = read(fd, buf, sizeof(buf));
+  if (len == -1) perror("inotify read");
+  if (len <= 0) return false;
+  for (char *ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + event->len)
+  {
+    event = (const struct inotify_event *) ptr;
+    if (event->mask & IN_ROS_READ) 
+      is_something_to_read = true;
+  }
+
+  return is_something_to_read;
+}
+#endif
+
+#if AMISHARE_ROS == 1
+void Subscription::mainPipeTest(int events) 
+{
+  if (events & POLLIN)
+  {
+    bool ready_for_read = inotify_handle_events(inotify_fd_);
+    if (ready_for_read)
+    { 
+      uint32_t size_to_read;
+      lseek(subscription_pipe_fd_, 0, SEEK_SET);
+      int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
+
+      if (size_to_read > 0)
+      {
+        message_read_buffer_.reset();
+        message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
+
+        bytes_read = read(subscription_pipe_fd_, message_read_buffer_.get(), size_to_read);
+      
+        if (bytes_read < 0) perror("read");
+        if (bytes_read > 0)
+        {
+          SerializedMessage m(message_read_buffer_, bytes_read);
+          handleMessage(m, true, false);
+        }
+      }
+    }
+  }
+}
+#endif
 
 void closeTransport(const TransportUDPPtr& trans)
 {
@@ -607,7 +677,11 @@ void Subscription::pendingConnectionDone(const PendingConnectionPtr& conn, XmlRp
   }
 }
 
+#if AMISHARE_ROS == 1
+uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool nocopy)
+#else
 uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool nocopy, const boost::shared_ptr<M_string>& connection_header, const PublisherLinkPtr& link)
+#endif
 {
   boost::mutex::scoped_lock lock(callbacks_mutex_);
 
@@ -643,6 +717,20 @@ uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool 
           break;
         }
       }
+#if AMISHARE_ROS == 1
+      boost::shared_ptr<M_string> connection_header;
+      Header header;
+
+      std::string topicname = getName();
+      connection_header = header.getValues();
+      (*connection_header)["callerid"] = this_node::getName();
+      (*connection_header)["topic"] = topicname;
+      (*connection_header)["type"] = datatype();
+      (*connection_header)["md5sum"] = md5sum();
+      (*connection_header)["latching"] = "0";
+      //(*connection_header)["message_definition"] = "string data\n";
+      (*connection_header)["message_definition"] = "\n";
+#endif
 
       if (!deserializer)
       {
@@ -670,6 +758,7 @@ uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool 
     }
   }
 
+#if AMISHARE_ROS != 1
   // measure statistics
   statistics_.callback(connection_header, name_, link->getCallerID(), m, link->getStats().bytes_received_, receipt_time, drops > 0, link->getConnectionID());
 
@@ -683,6 +772,7 @@ uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool 
     li.receipt_time = receipt_time;
     latched_messages_[link] = li;
   }
+#endif
 
   cached_deserializers_.clear();
 

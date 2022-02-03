@@ -25,6 +25,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #include "ros/topic_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/connection_manager.h"
@@ -711,8 +713,10 @@ void TopicManager::publish(const std::string& topic, const boost::function<Seria
   }
 
   PublicationPtr p = lookupPublicationWithoutLock(topic);
+#if AMISHARE_ROS != 1
   if (p->hasSubscribers() || p->isLatching())
   {
+#endif
     ROS_DEBUG_NAMED("superdebug", "Publishing message on topic [%s] with sequence number [%d]", p->getName().c_str(), p->getSequence());
 
     // Determine what kinds of subscribers we're publishing to.  If they're intraprocess with the same C++ type we can
@@ -752,11 +756,13 @@ void TopicManager::publish(const std::string& topic, const boost::function<Seria
     {
       poll_manager_->getPollSet().signal();
     }
+#if AMISHARE_ROS != 1
   }
   else
   {
     p->incrementSequence();
   }
+#endif
 }
 
 void TopicManager::incrementSequence(const std::string& topic)
