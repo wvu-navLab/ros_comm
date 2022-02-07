@@ -116,6 +116,12 @@ public:
    */
   void signal();
 
+#if AMISHARE_ROS == 1
+  int inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub);
+  void inotifyHandleEvents(int wd);
+  void mainPipeTest(int events);
+#endif
+
 private:
   /**
    * \brief Creates the native pollset for our sockets, if any have changed
@@ -147,6 +153,11 @@ private:
 
   boost::mutex signal_mutex_;
   signal_fd_t signal_pipe_[2];
+
+#if AMISHARE_ROS == 1
+  int inotify_fd_;
+  L_Subscription subscriptions_;
+#endif
 
   int epfd_;
 };

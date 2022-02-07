@@ -43,6 +43,12 @@
 
 #include <fcntl.h>
 
+#if AMISHARE_ROS == 1
+#include "ros/subscription.h"
+#include <sys/inotify.h>
+#define IN_ROS_READ IN_CLOSE_WRITE
+#endif
+
 namespace ros
 {
 
@@ -55,6 +61,13 @@ PollSet::PollSet()
   }
   addSocket(signal_pipe_[0], boost::bind(&PollSet::onLocalPipeEvents, this, boost::placeholders::_1));
   addEvents(signal_pipe_[0], POLLIN);
+
+#if AMISHARE_ROS == 1
+  inotify_fd_ = inotify_init();
+  if (inotify_fd_ == -1) perror("inotify");
+  addSocket(inotify_fd_, boost::bind(&PollSet::mainPipeTest, this, boost::placeholders::_1));
+  addEvents(inotify_fd_, POLLIN);
+#endif
 }
 
 PollSet::~PollSet()
@@ -62,6 +75,40 @@ PollSet::~PollSet()
   close_signal_pair(signal_pipe_);
   close_socket_watcher(epfd_);
 }
+
+#if AMISHARE_ROS == 1
+int PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
+{
+  subscriptions_.push_back(sub);
+  return inotify_add_watch(inotify_fd_, pathname, IN_ROS_READ);
+}
+
+void PollSet::inotifyHandleEvents(int events)
+{
+  char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
+  ssize_t len;
+  const struct inotify_event *in_event;
+  len = read(inotify_fd_, buf, sizeof(buf));
+  if (len == -1) perror("inotify read");
+  if (len <= 0) return;
+  for (char *ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + in_event->len)
+  {
+    in_event = (const struct inotify_event *) ptr;
+    for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
+    {
+      if ((in_event->mask & IN_ROS_READ) && in_event->wd == (*s)->getWD())
+      {
+        (*s)->mainPipeTest(events);
+      }
+    }
+  }
+}
+
+void PollSet::mainPipeTest(int events)
+{
+  inotifyHandleEvents(events);
+}
+#endif
 
 bool PollSet::addSocket(int fd, const SocketUpdateFunc& update_func, const TransportPtr& transport)
 {

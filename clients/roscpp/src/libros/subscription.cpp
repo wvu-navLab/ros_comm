@@ -62,8 +62,7 @@
 #include <boost/make_shared.hpp>
 
 #if AMISHARE_ROS == 1
-#include <sys/inotify.h>
-#define IN_ROS_READ IN_CLOSE_WRITE
+#include <sys/stat.h>
 #endif
 
 using XmlRpc::XmlRpcValue;
@@ -81,9 +80,18 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
 , transport_hints_(transport_hints)
 {
 #if AMISHARE_ROS == 1
-  inotify_fd_ = inotify_init();
-  PollManager::instance()->getPollSet().addSocket(inotify_fd_, boost::bind(&Subscription::mainPipeTest, this, boost::placeholders::_1));
-  PollManager::instance()->getPollSet().addEvents(inotify_fd_, POLLIN);
+  std::string pipename2 = ".txt";
+  size_t found = name.find_last_of("/");
+  if (found != std::string::npos && found != 0)
+  {
+    std::string directory = name.substr(0, found);
+    std::string openpath = AMISHARE_ROS_PATH + directory;
+    mkdir(openpath.c_str(), 0775);
+  }
+  subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
+  subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY | O_CREAT, 0666);
+
+  subscription_wd_ = PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
 #endif
 }
 
@@ -376,14 +384,7 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
        it != transports.end();
        ++it)
   {
-#if AMISHARE_ROS == 1
-      std::string name = getName();
-      std::string pipename2 = ".txt";
-      subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
-      subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY);
-
-      inotify_add_watch(inotify_fd_, subscription_pipename_.c_str(), IN_ROS_READ);
-#else
+#if AMISHARE_ROS != 1
     if (*it == "UDP")
     {
       int max_datagram_size = transport_hints_.getMaxDatagramSize();
@@ -464,51 +465,26 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
 }
 
 #if AMISHARE_ROS == 1
-bool inotify_handle_events(int fd)
-{
-  bool is_something_to_read = false;
-  char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
-  ssize_t len;
-  const struct inotify_event *event;
-  len = read(fd, buf, sizeof(buf));
-  if (len == -1) perror("inotify read");
-  if (len <= 0) return false;
-  for (char *ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + event->len)
-  {
-    event = (const struct inotify_event *) ptr;
-    if (event->mask & IN_ROS_READ) 
-      is_something_to_read = true;
-  }
-
-  return is_something_to_read;
-}
-#endif
-
-#if AMISHARE_ROS == 1
 void Subscription::mainPipeTest(int events) 
 {
   if (events & POLLIN)
   {
-    bool ready_for_read = inotify_handle_events(inotify_fd_);
-    if (ready_for_read)
-    { 
-      uint32_t size_to_read;
-      lseek(subscription_pipe_fd_, 0, SEEK_SET);
-      int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
+    uint32_t size_to_read;
+    lseek(subscription_pipe_fd_, 0, SEEK_SET);
+    int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
 
-      if (size_to_read > 0)
+    if (size_to_read > 0)
+    {
+      message_read_buffer_.reset();
+      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
+
+      bytes_read = read(subscription_pipe_fd_, message_read_buffer_.get(), size_to_read);
+    
+      if (bytes_read < 0) perror("read");
+      if (bytes_read > 0)
       {
-        message_read_buffer_.reset();
-        message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
-
-        bytes_read = read(subscription_pipe_fd_, message_read_buffer_.get(), size_to_read);
-      
-        if (bytes_read < 0) perror("read");
-        if (bytes_read > 0)
-        {
-          SerializedMessage m(message_read_buffer_, bytes_read);
-          handleMessage(m, true, false);
-        }
+        SerializedMessage m(message_read_buffer_, bytes_read);
+        handleMessage(m, true, false);
       }
     }
   }

@@ -91,6 +91,7 @@ public:
 
 #if AMISHARE_ROS == 1
   void mainPipeTest(int events);
+  int getWD() { return subscription_wd_; }
 #endif
 
   void addLocalConnection(const PublicationPtr& pub);
@@ -223,9 +224,9 @@ private:
   uint32_t nonconst_callbacks_;
 
 #if AMISHARE_ROS == 1
-  int inotify_fd_;
   std::string subscription_pipename_;
   int subscription_pipe_fd_;
+  int subscription_wd_;
   boost::shared_array<uint8_t> message_read_buffer_;
 #endif
 
