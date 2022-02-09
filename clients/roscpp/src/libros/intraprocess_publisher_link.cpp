@@ -32,8 +32,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "ros/intraprocess_publisher_link.h"
 #include "ros/intraprocess_subscriber_link.h"
 #include "ros/subscription.h"

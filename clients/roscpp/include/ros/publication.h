@@ -25,8 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #ifndef ROSCPP_PUBLICATION_H
 #define ROSCPP_PUBLICATION_H
 

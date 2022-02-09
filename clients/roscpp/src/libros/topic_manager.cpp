@@ -25,8 +25,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "ros/topic_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/connection_manager.h"

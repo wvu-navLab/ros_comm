@@ -32,8 +32,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include <ros/platform.h>  // platform dependendant requirements
 
 #include "ros/transport_publisher_link.h"
