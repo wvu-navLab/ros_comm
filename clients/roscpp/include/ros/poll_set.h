@@ -157,6 +157,7 @@ private:
 #if AMISHARE_ROS == 1
   int inotify_fd_;
   L_Subscription subscriptions_;
+  boost::mutex subscriptions_mutex_;
 #endif
 
   int epfd_;

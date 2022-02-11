@@ -98,6 +98,7 @@ Publication::Publication(const std::string &name,
   intraprocess_subscriber_count_(0)
 {
 #if AMISHARE_ROS == 1
+  boost::mutex::scoped_lock lock(publication_file_mutex_);
   std::string pipename2 = ".txt";
   publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
 
@@ -450,6 +451,7 @@ void Publication::publish(SerializedMessage& m)
 #if AMISHARE_ROS == 1
   if (m.buf)
   {
+    boost::mutex::scoped_lock lock(publication_file_mutex_);
     //publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
     publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
 

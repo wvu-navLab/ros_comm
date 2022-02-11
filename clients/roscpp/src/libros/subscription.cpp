@@ -80,6 +80,7 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
 , transport_hints_(transport_hints)
 {
 #if AMISHARE_ROS == 1
+  boost::mutex::scoped_lock lock(subscription_file_mutex_);
   std::string pipename2 = ".txt";
   size_t found = name.find_last_of("/");
   if (found != std::string::npos && found != 0)
@@ -469,6 +470,7 @@ void Subscription::mainPipeTest(int events)
 {
   if (events & POLLIN)
   {
+    boost::mutex::scoped_lock lock(subscription_file_mutex_);
     uint32_t size_to_read;
     lseek(subscription_pipe_fd_, 0, SEEK_SET);
     int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);

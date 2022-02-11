@@ -79,12 +79,14 @@ PollSet::~PollSet()
 #if AMISHARE_ROS == 1
 int PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
 {
+  boost::mutex::scoped_lock lock(subscriptions_mutex_);
   subscriptions_.push_back(sub);
   return inotify_add_watch(inotify_fd_, pathname, IN_ROS_READ);
 }
 
 void PollSet::inotifyHandleEvents(int events)
 {
+  boost::mutex::scoped_lock lock(subscriptions_mutex_);
   char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
   ssize_t len;
   const struct inotify_event *in_event;

@@ -226,6 +226,7 @@ private:
   int subscription_pipe_fd_;
   int subscription_wd_;
   boost::shared_array<uint8_t> message_read_buffer_;
+  boost::mutex subscription_file_mutex_;
 #endif
 
   bool dropped_;

@@ -169,6 +169,7 @@ private:
 #if AMISHARE_ROS == 1
   std::string publication_pipename_;
   int publication_pipe_fd_;
+  boost::mutex publication_file_mutex_;
 #endif
 
   typedef std::vector<SubscriberCallbacksPtr> V_Callback;
