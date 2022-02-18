@@ -45,8 +45,12 @@
 
 #if AMISHARE_ROS == 1
 #include "ros/subscription.h"
-#include <sys/inotify.h>
-#define IN_ROS_READ IN_CLOSE_WRITE
+#include "ros/this_node.h"
+#include <sys/socket.h>
+#include <sys/un.h>
+//#include <sys/inotify.h>
+//#define IN_ROS_READ IN_CLOSE_WRITE
+#define FIFO_NAME "/home/teresa/catkin_ws/tmp/amishare-ros-fifo"
 #endif
 
 namespace ros
@@ -63,10 +67,29 @@ PollSet::PollSet()
   addEvents(signal_pipe_[0], POLLIN);
 
 #if AMISHARE_ROS == 1
-  inotify_fd_ = inotify_init();
-  if (inotify_fd_ == -1) perror("inotify");
+  struct sockaddr_un addr;
+  std::string node_name = FIFO_NAME + this_node::getName();
+  inotify_fd_ = open(node_name.c_str(), O_RDONLY);
+/*
+  inotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
+  int ret = connect(inotify_fd_, (const struct sockaddr *) &addr, sizeof(addr));
+  if (ret == -1) perror("connect");
+*/
   addSocket(inotify_fd_, boost::bind(&PollSet::mainPipeTest, this, boost::placeholders::_1));
   addEvents(inotify_fd_, POLLIN);
+/*
+  _AmiNotifyMessage amn;
+  amn.ui8OpCode = 3;
+  amn.cchLength = node_name.length();
+  node_name.copy(amn.achPath, amn.cchLength);
+  char buf[259];
+  buf[0] = amn.ui8OpCode;
+  buf[1] = amn.cchLength;
+  node_name.copy(&(buf[3]), amn.cchLength);
+  ret = write(inotify_fd_, buf, sizeof(buf));
+*/
 #endif
 }
 
@@ -77,31 +100,40 @@ PollSet::~PollSet()
 }
 
 #if AMISHARE_ROS == 1
-int PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
+void PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
 {
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
   subscriptions_.push_back(sub);
-  return inotify_add_watch(inotify_fd_, pathname, IN_ROS_READ);
+  //return inotify_add_watch(inotify_fd_, pathname, IN_ROS_READ);
 }
 
 void PollSet::inotifyHandleEvents(int events)
 {
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
-  char buf[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
+  std::string pathname;
+  char buf[4096];
   ssize_t len;
-  const struct inotify_event *in_event;
-  len = read(inotify_fd_, buf, sizeof(buf));
-  if (len == -1) perror("inotify read");
-  if (len <= 0) return;
-  for (char *ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + in_event->len)
+  uint16_t size_to_read;
+  uint8_t opcode;
+  len = read(inotify_fd_, &opcode, 1);
+  while (len > 0)
   {
-    in_event = (const struct inotify_event *) ptr;
-    for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
+    len = read(inotify_fd_, &size_to_read, 2);
+    len = read(inotify_fd_, buf, size_to_read);
+// error handling for later: if it has read one byte and then fails to read
+// the rest of the message (if it isn't all there or something) then it 
+// maybe should exit because all reads will be off after that
+// (find out how this is going to work)
+    buf[size_to_read] = 0;
+    if (len <= 0) return;
+    pathname = buf;
+    len = read(inotify_fd_, &opcode, 1);
+  }
+  for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
+  {
+    if (pathname == (*s)->getPathname())
     {
-      if ((in_event->mask & IN_ROS_READ) && in_event->wd == (*s)->getWD())
-      {
-        (*s)->mainPipeTest(events);
-      }
+      (*s)->mainPipeTest(events);
     }
   }
 }

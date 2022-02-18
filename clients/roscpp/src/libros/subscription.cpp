@@ -92,7 +92,8 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
   subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
   subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY | O_CREAT, 0666);
 
-  subscription_wd_ = PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
+  //subscription_wd_ = PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
+  PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
 #endif
 }
 

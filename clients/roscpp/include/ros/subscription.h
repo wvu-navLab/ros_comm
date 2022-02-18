@@ -89,7 +89,8 @@ public:
 
 #if AMISHARE_ROS == 1
   void mainPipeTest(int events);
-  int getWD() { return subscription_wd_; }
+  std::string getPathname() { return subscription_pipename_; }
+  //int getWD() { return subscription_wd_; }
 #endif
 
   void addLocalConnection(const PublicationPtr& pub);
@@ -224,7 +225,7 @@ private:
 #if AMISHARE_ROS == 1
   std::string subscription_pipename_;
   int subscription_pipe_fd_;
-  int subscription_wd_;
+  //int subscription_wd_;
   boost::shared_array<uint8_t> message_read_buffer_;
   boost::mutex subscription_file_mutex_;
 #endif
