@@ -73,6 +73,7 @@ CHECK_CXX_SYMBOL_EXISTS(epoll_wait "sys/epoll.h" HAVE_EPOLL)
 
 add_compile_definitions(AMISHARE_ROS=0)
 add_compile_definitions(AMISHARE_ROS_PATH=)
+add_compile_definitions(FIFO_PATH=)
 
 # Output test results to config.h
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libros/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)

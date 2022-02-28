@@ -452,8 +452,8 @@ void Publication::publish(SerializedMessage& m)
   if (m.buf)
   {
     boost::mutex::scoped_lock lock(publication_file_mutex_);
-    //publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0666);
-    publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    //publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
+    publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
 
     write(publication_pipe_fd_, m.buf.get(), m.num_bytes);
     write(publication_pipe_fd_, "\n", sizeof(char));

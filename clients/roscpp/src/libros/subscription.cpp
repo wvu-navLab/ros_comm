@@ -90,9 +90,6 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
     mkdir(openpath.c_str(), 0775);
   }
   subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
-  subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY | O_CREAT, 0666);
-
-  //subscription_wd_ = PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
   PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
 #endif
 }
@@ -473,9 +470,9 @@ void Subscription::mainPipeTest(int events)
   {
     boost::mutex::scoped_lock lock(subscription_file_mutex_);
     uint32_t size_to_read;
-    lseek(subscription_pipe_fd_, 0, SEEK_SET);
+    //lseek(subscription_pipe_fd_, 0, SEEK_SET);
+    subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY, 0666);
     int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
-
     if (size_to_read > 0)
     {
       message_read_buffer_.reset();
@@ -490,6 +487,7 @@ void Subscription::mainPipeTest(int events)
         handleMessage(m, true, false);
       }
     }
+    close(subscription_pipe_fd_);
   }
 }
 #endif
