@@ -328,7 +328,7 @@ class ROSMasterHandler(object):
     
 
     def _diff_and_apply_registrations(self):
-
+        # from https://stackoverflow.com/a/25294767
         def tuplify(listything):
             if isinstance(listything, list): return tuple(map(tuplify, listything))
             if isinstance(listything, dict): return {k:tuplify(v) for k,v in listything.items()}
