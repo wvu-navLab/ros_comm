@@ -70,6 +70,9 @@ def _get_optparse():
                       default=DEFAULT_TIMEOUT_SIGTERM, type=float,
                       help="the SIGTERM timeout used when killing core if SIGINT does not stop the core (in seconds).",
                       metavar="SIGTERM_TIMEOUT")
+    parser.add_option("-r", "--registration-path",
+                      dest="registration_path", default=None, type=str,
+                      help="path to registration file")
     return parser
 
 
@@ -81,4 +84,5 @@ if len(args) > 0:
 
 
 import roslaunch
+print("[bin/roscore] registration path: {}".format(options.registration_path))
 roslaunch.main(['roscore', '--core'] + sys.argv[1:])
