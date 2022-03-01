@@ -35,6 +35,8 @@
 from rosmaster.util import remove_server_proxy
 from rosmaster.util import xmlrpcapi
 import rosmaster.exceptions
+import json
+import os
 
 """Data structures for representing registration data in the Master"""
 
@@ -234,6 +236,19 @@ class Registrations(object):
         @rtype: bool
         """
         return key in self.map
+
+    def get_state_with_apis(self, filter):
+        """
+        @param filter: list of topics to filter out
+        @type  filter: [str, ...]
+        @return: state in getSystemState()-friendly format [ [key, [callerId1...callerIdN]] ... ]
+        @rtype: {str: [(str, str), ...], ...}
+        """
+        retval = {}
+        for k in self.map:
+            if k not in filter:
+                retval[k] = self.map[k]
+        return self.map
     
     def get_state(self):
         """
@@ -351,7 +366,7 @@ class RegistrationManager(object):
     RegistrationManager is not threadsafe, so access must be externally locked as appropriate
     """
 
-    def __init__(self, thread_pool):
+    def __init__(self, thread_pool, registration_path=None):
         """
         ctor.
         @param thread_pool: thread pool for queueing tasks
@@ -364,6 +379,7 @@ class RegistrationManager(object):
         self.subscribers = Registrations(Registrations.TOPIC_SUBSCRIPTIONS)
         self.services = Registrations(Registrations.SERVICE)
         self.param_subscribers = Registrations(Registrations.PARAM_SUBSCRIPTIONS)        
+        self.registration_path = registration_path
 
     
     def reverse_lookup(self, caller_api):
@@ -395,6 +411,15 @@ class RegistrationManager(object):
             self.services.unregister_all(caller_id)
             self.param_subscribers.unregister_all(caller_id)
         r.register(key, caller_id, caller_api, service_api)
+
+        # use O_TRUNC for opening file
+        # maybe use fwrite
+        # cout/cin do buffered i/o and generate multiple write syscalls
+        # read up on virtualbox's filesystem semantics (does it support filesystem watching?)
+        #
+        # write to json
+        # then spin new master to see if it can read from file and bootstrap (print the topics it has)
+        # then open ports and see if topics can transfer between VMs through TCP
         
     def _unregister(self, r, key, caller_id, caller_api, service_api=None):
         node_ref = self.nodes.get(caller_id, None)
@@ -407,6 +432,7 @@ class RegistrationManager(object):
                 del self.nodes[caller_id]
         else:
             retval = 1, "[%s] is not a registered node"%caller_id, 0
+        
         return retval
     
     def register_service(self, service, caller_id, caller_api, service_api):

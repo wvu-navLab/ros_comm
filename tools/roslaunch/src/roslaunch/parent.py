@@ -73,7 +73,7 @@ class ROSLaunchParent(object):
     This must be called from the Python Main thread due to signal registration.    
     """
 
-    def __init__(self, run_id, roslaunch_files, is_core=False, port=None, local_only=False, process_listeners=None,
+    def __init__(self, run_id, roslaunch_files, is_core=False, port=None, local_only=False, registration_path=None, process_listeners=None,
             verbose=False, force_screen=False, force_log=False, is_rostest=False, roslaunch_strs=None, num_workers=NUM_WORKERS, timeout=None, master_logger_level=False, show_summary=True, force_required=False,
             sigint_timeout=DEFAULT_TIMEOUT_SIGINT, sigterm_timeout=DEFAULT_TIMEOUT_SIGTERM):
         """
@@ -132,6 +132,7 @@ class ROSLaunchParent(object):
         self.is_rostest = is_rostest
         self.port = port
         self.local_only = local_only
+        self.registration_path = registration_path
         self.verbose = verbose
         self.show_summary = show_summary
         self.num_workers = num_workers
@@ -186,7 +187,7 @@ class ROSLaunchParent(object):
             raise RLException("pm is not initialized")
         if self.server is None:
             raise RLException("server is not initialized")
-        self.runner = roslaunch.launch.ROSLaunchRunner(self.run_id, self.config, server_uri=self.server.uri, pmon=self.pm, is_core=self.is_core, remote_runner=self.remote_runner, is_rostest=self.is_rostest, num_workers=self.num_workers, timeout=self.timeout, master_logger_level=self.master_logger_level,
+        self.runner = roslaunch.launch.ROSLaunchRunner(self.run_id, self.config, server_uri=self.server.uri, pmon=self.pm, is_core=self.is_core, registration_path=self.registration_path, remote_runner=self.remote_runner, is_rostest=self.is_rostest, num_workers=self.num_workers, timeout=self.timeout, master_logger_level=self.master_logger_level,
                                                        sigint_timeout=self.sigint_timeout, sigterm_timeout=self.sigterm_timeout)
 
         # print runner info to user, put errors last to make the more visible

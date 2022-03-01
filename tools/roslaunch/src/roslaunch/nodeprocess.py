@@ -64,7 +64,7 @@ def _next_counter():
     _counter += 1
     return _counter
 
-def create_master_process(run_id, type_, ros_root, port, num_workers=NUM_WORKERS, timeout=None, master_logger_level=False, sigint_timeout=DEFAULT_TIMEOUT_SIGINT, sigterm_timeout=DEFAULT_TIMEOUT_SIGTERM):
+def create_master_process(run_id, type_, ros_root, port, registration_path=None, num_workers=NUM_WORKERS, timeout=None, master_logger_level=False, sigint_timeout=DEFAULT_TIMEOUT_SIGINT, sigterm_timeout=DEFAULT_TIMEOUT_SIGTERM):
     """
     Launch a master
     @param type_: name of master executable (currently just Master.ZENMASTER)
@@ -99,6 +99,8 @@ def create_master_process(run_id, type_, ros_root, port, num_workers=NUM_WORKERS
             args += ['-t', str(timeout)]
         if master_logger_level:
             args += ['--master-logger-level', str(master_logger_level)]
+        if registration_path:
+            args += ['--registration-path', str(registration_path)]
     else:
         raise RLException("unknown master typ_: %s"%type_)
 

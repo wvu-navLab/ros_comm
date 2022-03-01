@@ -204,6 +204,9 @@ def _get_optparse():
                       default=DEFAULT_TIMEOUT_SIGTERM, type=float,
                       help="the SIGTERM timeout used when killing nodes if SIGINT does not stop the node (in seconds).",
                       metavar="SIGTERM_TIMEOUT")
+    parser.add_option("-r", "--registration-path",
+                      dest="registration_path", default=None, type=str,
+                      help="path to registration file")
 
     return parser
     
@@ -336,6 +339,7 @@ def main(argv=sys.argv):
                 options.port = options.port or DEFAULT_MASTER_PORT
             p = roslaunch_parent.ROSLaunchParent(uuid, args, roslaunch_strs=roslaunch_strs,
                     is_core=options.core, port=options.port, local_only=options.local_only,
+                    registration_path=options.registration_path,
                     verbose=options.verbose, force_screen=options.force_screen,
                     force_log=options.force_log,
                     num_workers=options.num_workers, timeout=options.timeout,

@@ -221,7 +221,7 @@ in your launch"""%'\n'.join([" * %s (timeout %ss)"%(m.name, m.timeout) for m in 
             except socket.gaierror as e:
                 errno, msg = e
                 # usually errno == -2. See #815. 
-                child_host, _ = network.parse_http_host_and_port(child.uri)
+                child_host, _, _ = network.parse_http_host_and_port(child.uri)
                 printerrlog("Unable to contact remote roslaunch at [%s]. This is most likely due to a network misconfiguration with host lookups. Please make sure that you can contact '%s' from this machine"%(child.uri, child_host))
                 self._assume_failed(nodes, failed)
 

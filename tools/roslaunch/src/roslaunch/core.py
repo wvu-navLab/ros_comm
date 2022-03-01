@@ -239,7 +239,7 @@ def remap_localhost_uri(uri, force_localhost=False):
     :param uri: XML-RPC URI, ``str``
     :param force_localhost: if True, URI is mapped onto the local machine no matter what, ``bool``
     """
-    hostname, port = rosgraph.network.parse_http_host_and_port(uri)
+    hostname, port, _ = rosgraph.network.parse_http_host_and_port(uri)
     if force_localhost or hostname == 'localhost':
         return rosgraph.network.create_local_xmlrpc_uri(port)
     else:
@@ -270,7 +270,7 @@ class Master(object):
         
     def get_host(self):
         # parse from the URI
-        host, _ = rosgraph.network.parse_http_host_and_port(self.uri)
+        host, _, _= rosgraph.network.parse_http_host_and_port(self.uri)
         return host
     
     def get_port(self):
@@ -278,8 +278,17 @@ class Master(object):
         Get the port this master is configured for.
         """
         # parse from the URI
-        _, urlport = rosgraph.network.parse_http_host_and_port(self.uri)
+        _, urlport, _ = rosgraph.network.parse_http_host_and_port(self.uri)
         return urlport
+    
+    def get_path(self):
+        """
+        JSF 18-01-2022: added method to grab AmiShare path from the URI.
+
+        Get the path this master is configured for.
+        """
+        _, _, path = rosgraph.network.parse_http_host_and_port(self.uri)
+        return path
             
     def __eq__(self, m2):
         if not isinstance(m2, Master):

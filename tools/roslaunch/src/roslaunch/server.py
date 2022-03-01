@@ -263,7 +263,7 @@ class ROSLaunchChildHandler(ROSLaunchBaseHandler):
         self.run_id = run_id
         
         # parse the URI to make sure it's valid
-        _, urlport = network.parse_http_host_and_port(server_uri)
+        _, urlport, _ = network.parse_http_host_and_port(server_uri)
         if urlport <= 0:
             raise RLException("ERROR: roslaunch server URI is not a valid XML-RPC URI. Value is [%s]"%m.uri)
 
