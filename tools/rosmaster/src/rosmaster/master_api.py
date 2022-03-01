@@ -61,6 +61,7 @@ import logging
 import threading
 import time
 import traceback
+import json
 
 from rosgraph.xmlrpc import XmlRpcHandler
 
@@ -246,28 +247,224 @@ class ROSMasterHandler(object):
     this parameter (see ros::client::getMaster()).
     """
     
-    def __init__(self, num_workers=NUM_WORKERS):
+    def __init__(self, num_workers=NUM_WORKERS, registration_path=None):
         """ctor."""
 
         self.uri = None
         self.done = False
 
+        # flag for whether or not we've bootstrapped from the on-disk registration
+        self.init_from_file = False
+        # flag to control writing to the on-disk registration, such as when we're applying changes made from a remote ROSMaster
+        self.update_file = True
+        # filters against local-only ROS topics
+        self.filters = ['/rosout', '/rosout_agg']
+
         self.thread_pool = rosmaster.threadpool.MarkedThreadPool(num_workers)
         # pub/sub/providers: dict { topicName : [publishers/subscribers names] }
         self.ps_lock = threading.Condition(threading.Lock())
+        # lock for accessing the on-disk registration
+        self.regfile_lock = threading.Condition(threading.Lock())
+        # lock for modifying the `update_file` flag
+        self.update_file_lock = threading.Condition(threading.Lock())
 
-        self.reg_manager = RegistrationManager(self.thread_pool)
+        self.reg_manager = RegistrationManager(self.thread_pool, registration_path)
 
         # maintain refs to reg_manager fields
         self.publishers  = self.reg_manager.publishers
         self.subscribers = self.reg_manager.subscribers
         self.services = self.reg_manager.services
         self.param_subscribers = self.reg_manager.param_subscribers
+        self.registration_path = self.reg_manager.registration_path
         
         self.topics_types = {} #dict { topicName : type }
 
         # parameter server dictionary
         self.param_server = rosmaster.paramserver.ParamDictionary(self.reg_manager)
+
+    def _read_registration_file_to_dict(self):
+        if self.registration_path and os.path.isfile(self.registration_path):
+            try:
+                print('[read] waiting for regfile lock')
+                self.regfile_lock.acquire()
+                print('[read] acquired regfile lock')
+                with open(self.registration_path, 'r') as f:
+                    regs = json.loads(f.read())
+            finally:
+                self.regfile_lock.release()
+                print('[read] released regfile lock')
+        return regs
+
+
+    def _gen_registration_dict(self):
+        try:
+            print('[gen] waiting for ps lock')
+            self.ps_lock.acquire()
+            print('[gen] acquired ps lock')
+            pubs = self.publishers.get_state_with_apis(self.filters)
+            subs = self.subscribers.get_state_with_apis(self.filters)
+
+            regs = {}
+            for k, v in pubs.items():
+                if k in self.filters:
+                    continue
+                regs[k] = {}
+                regs[k]['topic_type'] = self.topics_types[k]
+                regs[k]['publishers'] = v
+
+            for k, v in subs.items():
+                if k in self.filters:
+                    continue
+                if k in regs.keys():
+                    regs[k]['subscribers'] = v
+                else:
+                    regs[k] = {}
+                    regs[k]['topic_type'] = self.topics_types[k]
+                    regs[k]['subscribers'] = v
+        finally:
+            self.ps_lock.release()
+            print('[gen] released ps lock')
+        return regs
+    
+
+    def _diff_and_apply_registrations(self):
+
+        def tuplify(listything):
+            if isinstance(listything, list): return tuple(map(tuplify, listything))
+            if isinstance(listything, dict): return {k:tuplify(v) for k,v in listything.items()}
+            return listything
+
+        try:
+            print('[diff] waiting for update_file lock')
+            self.update_file_lock.acquire()
+            print('[diff] got update_file lock')
+            self.update_file = False
+            print('[diff] set update_file to FALSE')
+            from_file = self._read_registration_file_to_dict()
+            from_mem = self._gen_registration_dict()
+
+            new_topics_set = set(from_file.keys()) - set(from_mem.keys())
+            lost_topics_set = set(from_mem.keys()) - set(from_file.keys())
+
+            # check if topic added from file
+            if len(new_topics_set):
+                for new_topic in new_topics_set:
+                    # register new publishers
+                    caller_id = from_file[new_topic]['publishers'][0][0]
+                    topic_type = from_file[new_topic]['topic_type']
+                    caller_api = from_file[new_topic]['publishers'][0][1] 
+                    xmlrpcapi(self.uri).registerPublisher(caller_id, new_topic, topic_type, caller_api)
+
+            # check if topic removed from file
+            elif len(lost_topics_set):
+                for lost_topic in lost_topics_set:
+                    caller_id = from_mem[lost_topic]['publishers'][0][0]
+                    caller_api = from_mem[lost_topic]['publishers'][0][1] 
+                    xmlrpcapi(self.uri).unregisterPublisher(caller_id, lost_topic, caller_api)
+            
+            else:
+                # check topic subs/pubs
+                # there's probably a better way to check for diffs between the in-memory and on-disk registration, but this chain of if-else's works
+                for topic in from_file.keys():
+                    # tuplify any lists in the dict so we can make sets from inner lists
+                    from_file = tuplify(from_file)
+                    from_mem = tuplify(from_mem)
+
+                    # skip this topic if it doesn't exist
+                    if 'publishers' not in from_file[topic].keys() and 'publishers' not in from_mem[topic].keys() and 'subscribers' not in from_file[topic].keys() and 'subscribers' not in from_mem[topic].keys():
+                       continue
+
+                    # check the differences in publishers from memory vs disk to find new/removed publishers
+                    if 'publishers' in from_file[topic].keys() and 'publishers' in from_mem[topic].keys():
+                        new_publishers_set = set(from_file[topic]['publishers']) - set(from_mem[topic]['publishers'])
+                        lost_publishers_set = set(from_mem[topic]['publishers']) - set(from_file[topic]['publishers'])
+                    elif 'publishers' in from_file[topic].keys():
+                        new_publishers_set = set(from_file[topic]['publishers'])
+                        lost_publishers_set = set()
+                    elif 'publishers' in from_mem[topic].keys():
+                        new_publishers_set = set()
+                        lost_publishers_set = set(from_mem[topic]['publishers'])
+
+                    # check the differences in subscribers from memory vs disk to find new/removed subscribers
+                    if 'subscribers' in from_file[topic].keys() and 'subscribers' in from_mem[topic].keys():
+                        new_subscribers_set = set(from_file[topic]['subscribers']) - set(from_mem[topic]['subscribers'])
+                        lost_subscribers_set = set(from_mem[topic]['subscribers']) - set(from_file[topic]['subscribers'])
+                    elif 'subscribers' in from_file[topic].keys():
+                        new_subscribers_set = set(from_file[topic]['subscribers'])
+                        lost_subscribers_set = set()
+                    elif 'subscribers' in from_mem[topic].keys():
+                        new_subscribers_set = set()
+                        lost_subscribers_set = set(from_mem[topic]['subscribers'])
+
+                    # register new publishers, if any
+                    if len(new_publishers_set):
+                        for new_publisher in new_publishers_set:
+                            # registerPublisher
+                            topic_type = from_file[topic]['topic_type']
+                            xmlrpcapi(self.uri).registerPublisher(new_publisher[0], topic, topic_type, new_publisher[1])
+                        
+                    # unregister removed publishers, if any
+                    elif len(lost_publishers_set):
+                        for lost_publisher in lost_publishers_set:
+                            # unregisterPublisher
+                            xmlrpcapi(self.uri).unregisterPublisher(lost_publisher[0], topic, lost_publisher[1])
+
+                    # register new subscribers, if any
+                    if len(new_subscribers_set):
+                        for new_subscriber in new_subscribers_set:
+                            # registerSubscriber
+                            topic_type = from_file[topic]['topic_type']
+                            xmlrpcapi(self.uri).registerSubscriber(new_subscriber[0], topic, topic_type, new_subscriber[1])
+                        
+                    # unregister removed subscribers, if any
+                    elif len(lost_subscribers_set):
+                        for lost_subscriber in lost_subscribers_set:
+                            # unregisterSubscriber
+                            xmlrpcapi(self.uri).unregisterSubscriber(lost_subscriber[0], topic, lost_subscriber[1])
+        finally:
+            self.update_file = True
+            print('[diff] set update_file to TRUE')
+            self.update_file_lock.release()
+            print('[diff] released update_file lock')
+
+
+    def _dump_registration_file(self):
+        try:
+            print('[dump] waiting for regfile lock')
+            self.regfile_lock.acquire()
+            print('[dump] got regfile lock')
+            if self.registration_path:
+                with open(self.registration_path, 'w') as f:
+                    f.write(json.dumps(self._gen_registration_dict()))
+        finally:
+            self.regfile_lock.release()
+            print('[dump] released regfile lock')
+
+
+    def _init_with_registration_file(self):
+        if self.registration_path and os.path.isfile(self.registration_path):
+            try:
+                print('[init] waiting for update_file lock')
+                self.update_file_lock.acquire()
+                print('[init] got update_file lock')
+                self.update_file = False
+                print('[init] set update_file to FALSE')
+                with open(self.registration_path, 'r') as f:
+                    regs = json.loads(f.read())
+
+                    for k, v in regs.items():
+                        for pub in v['publishers']:
+                            #print('{} {} {} {}'.format(pub[0], k, v['topic_type'], pub[1]))
+                            xmlrpcapi(self.uri).registerPublisher(pub[0], k, v['topic_type'], pub[1])
+                        if 'subscribers' in v.keys():
+                            for sub in v['subscribers']:
+                                xmlrpcapi(self.uri).registerSubscriber(sub[0], k, v['topic_type'], sub[1])
+            finally:
+                self.update_file = True
+                print('[init] set update_file to TRUE')
+                self.update_file_lock.release()
+                print('[init] released update_file lock')
+
 
     def _shutdown(self, reason=''):
         if self.thread_pool is not None:
@@ -289,6 +486,18 @@ class ROSMasterHandler(object):
     
     ###############################################################################
     # EXTERNAL API
+
+    @apivalidate(0)
+    def reloadRegistration(self, caller_id):
+        print('\n[master-api] called reloadRegistration')
+        self._diff_and_apply_registrations()
+        return 1, "", 0
+
+    @apivalidate(0)
+    def getRegistration(self, caller_id):
+        print('\n[master-api] called getRegistration')
+        return 1, json.dumps(self._gen_registration_dict()), 0
+
 
     @apivalidate(0, (None, ))
     def shutdown(self, caller_id, msg=''):
@@ -691,10 +900,13 @@ class ROSMasterHandler(object):
            for nodes currently publishing the specified topic.
         @rtype: (int, str, [str])
         """
+        print('[master-api] called registerSubscriber')
         #NOTE: subscribers do not get to set topic type
+
         try:
             self.ps_lock.acquire()
             self.reg_manager.register_subscriber(topic, caller_id, caller_api)
+            print('[master-api] registered subscriber {} {} {}'.format(topic, caller_id, caller_api))
 
             # ROS 1.1: subscriber can now set type if it is not already set
             #  - don't let '*' type squash valid typing
@@ -705,6 +917,8 @@ class ROSMasterHandler(object):
             pub_uris = self.publishers.get_apis(topic)
         finally:
             self.ps_lock.release()
+        if self.update_file and topic not in self.filters:
+            self._dump_registration_file()
         return 1, "Subscribed to [%s]"%topic, pub_uris
 
     @apivalidate(0, (is_topic('topic'), is_api('caller_api')))
@@ -723,16 +937,24 @@ class ROSMasterHandler(object):
           The call still succeeds as the intended final state is reached.
         @rtype: (int, str, int)
         """
+        print('[master-api] called unregisterSubscriber')
         try:
             self.ps_lock.acquire()
             retval = self.reg_manager.unregister_subscriber(topic, caller_id, caller_api)
+            print('[master-api] unregistered subscriber {} {} {}'.format(topic, caller_id, caller_api))
             mloginfo("-SUB [%s] %s %s",topic, caller_id, caller_api)
             return retval
         finally:
             self.ps_lock.release()
+            if self.update_file and topic not in self.filters:
+                self._dump_registration_file()
 
     @apivalidate([], ( is_topic('topic'), valid_type_name('topic_type'), is_api('caller_api')))
     def registerPublisher(self, caller_id, topic, topic_type, caller_api):
+        if not self.init_from_file:
+            self.init_from_file = True
+            self._init_with_registration_file()
+        
         """
         Register the caller as a publisher the topic.
         @param caller_id: ROS caller id
@@ -748,10 +970,13 @@ class ROSMasterHandler(object):
         List of current subscribers of topic in the form of XMLRPC URIs.
         @rtype: (int, str, [str])
         """
+        print('[master-api] called registerPublisher')
+        #print('{} in filters? {}'.format(topic, topic in self.filters))
         #NOTE: we need topic_type for getPublishedTopics.
         try:
             self.ps_lock.acquire()
             self.reg_manager.register_publisher(topic, caller_id, caller_api)
+            print('[master-api] registered publisher {} {} {}'.format(topic, caller_id, caller_api))
             # don't let '*' type squash valid typing
             if topic_type != rosgraph.names.ANYTYPE or not topic in self.topics_types:
                 self.topics_types[topic] = topic_type
@@ -762,6 +987,8 @@ class ROSMasterHandler(object):
             sub_uris = self.subscribers.get_apis(topic)            
         finally:
             self.ps_lock.release()
+        if self.update_file and topic not in self.filters:
+            self._dump_registration_file()
         return 1, "Registered [%s] as publisher of [%s]"%(caller_id, topic), sub_uris
 
 
@@ -782,14 +1009,18 @@ class ROSMasterHandler(object):
            The call still succeeds as the intended final state is reached.
         @rtype: (int, str, int)
         """            
+        print('[master-api] called unregisterPublisher')
         try:
             self.ps_lock.acquire()
             retval = self.reg_manager.unregister_publisher(topic, caller_id, caller_api)
+            print('[master-api] unregistered publisher {} {} {}'.format(topic, caller_id, caller_api))
             if retval[VAL]:
                 self._notify_topic_subscribers(topic, self.publishers.get_apis(topic), self.subscribers.get_apis(topic))
             mloginfo("-PUB [%s] %s %s",topic, caller_id, caller_api)
         finally:
             self.ps_lock.release()
+        if self.update_file and topic not in self.filters:
+            self._dump_registration_file()
         return retval
 
     ##################################################################################
