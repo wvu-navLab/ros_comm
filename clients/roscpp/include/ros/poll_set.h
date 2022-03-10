@@ -117,7 +117,7 @@ public:
   void signal();
 
 #if AMISHARE_ROS == 1
-  void inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub);
+  void inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub);
   void inotifyHandleEvents(int wd);
   void mainPipeTest(int events);
 #endif

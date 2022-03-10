@@ -48,6 +48,7 @@
 #include "ros/this_node.h"
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #endif
 
 namespace ros
@@ -71,13 +72,14 @@ PollSet::~PollSet()
 }
 
 #if AMISHARE_ROS == 1
-void PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
+void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
 {
+  std::string node_name = FIFO_PATH;
   if (subscriptions_.size() == 0)
   {
     struct sockaddr_un addr;
-    std::string tmp_node_name = "/ros-socket";
-    std::string node_name = FIFO_PATH + tmp_node_name;
+    //std::string tmp_node_name = "/ros-socket";
+    //std::string node_name = FIFO_PATH + tmp_node_name;
     inotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
@@ -85,15 +87,24 @@ void PollSet::inotifyAddWatch(const char *pathname, const SubscriptionPtr &sub)
     if (ret == -1) perror("connect");
     addSocket(inotify_fd_, boost::bind(&PollSet::mainPipeTest, this, boost::placeholders::_1));
     addEvents(inotify_fd_, POLLIN);
-    _AmiNotifyMessage amn;
-    amn.ui8OpCode = 3;
-    amn.cchLength = node_name.length();
-    node_name.copy(amn.achPath, amn.cchLength);
-    char buf[259];
-    buf[0] = amn.ui8OpCode;
-    buf[1] = amn.cchLength;
-    node_name.copy(&(buf[3]), amn.cchLength);
-    ret = write(inotify_fd_, buf, sizeof(buf));
+  }
+  _AmiNotifyMessage amn;
+  amn.ui8OpCode = 3;
+  amn.cchLength = node_name.length();
+  node_name.copy(amn.achPath, amn.cchLength);
+  char buf[259];
+  buf[0] = amn.ui8OpCode;
+  //node_name.copy(&(buf[3]), amn.cchLength);
+  std::string tmp_pathname = pathname;
+  buf[1] = 0; buf[2] = 0;
+  buf[1] = uint16_t(tmp_pathname.length());
+  if (tmp_pathname.length() < 259)
+  {
+    printf("pathname length %d\n", tmp_pathname.length());
+    tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
+    int i = tmp_pathname.length() + 3;
+    buf[i] = 0;
+    int ret = write(inotify_fd_, buf, i);
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
@@ -108,24 +119,35 @@ void PollSet::inotifyHandleEvents(int events)
   ssize_t len;
   uint16_t size_to_read;
   uint8_t opcode;
+  double mtime;
   len = read(inotify_fd_, &opcode, 1);
   if (len > 0)
   {
+    len = read(inotify_fd_, &mtime, 8);
     len = read(inotify_fd_, &size_to_read, 2);
     len = read(inotify_fd_, buf, size_to_read);
-// error handling for later: if it has read one byte and then fails to read
-// the rest of the message (if it isn't all there or something) then it 
-// should exit because all reads will be off after that
-// (find out how this is going to work)
     buf[size_to_read] = 0;
     if (len <= 0) return;
     pathname = buf;
-  }
-  for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
-  {
-    if (pathname == (*s)->getPathname())
+
+    struct stat path_stat;
+    lstat(pathname.c_str(), &path_stat);
+    int64_t iread_mtime = path_stat.st_mtim.tv_sec;
+    int64_t imtime = (int64_t)mtime;
+    //iread_mtime = iread_mtime / 10;
+    //imtime = imtime / 10;
+    if (iread_mtime < imtime)
     {
-      (*s)->mainPipeTest(events);
+      double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
+      printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
+      return;
+    }
+    for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
+    {
+      if (pathname == (*s)->getPathname())
+      {
+        (*s)->mainPipeTest(events);
+      }
     }
   }
 }

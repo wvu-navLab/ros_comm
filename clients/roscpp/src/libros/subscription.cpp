@@ -90,7 +90,7 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
     mkdir(openpath.c_str(), 0775);
   }
   subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
-  PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_.c_str(), SubscriptionPtr(this));
+  PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_, SubscriptionPtr(this));
 #endif
 }
 
