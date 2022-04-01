@@ -383,7 +383,6 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
        it != transports.end();
        ++it)
   {
-#if AMISHARE_ROS != 1
     if (*it == "UDP")
     {
       int max_datagram_size = transport_hints_.getMaxDatagramSize();
@@ -416,7 +415,6 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
     {
       ROS_WARN("Unsupported transport type hinted: %s, skipping", it->c_str());
     }
-#endif
   }
   params[0] = this_node::getName();
   params[1] = name_;
