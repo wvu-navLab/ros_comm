@@ -449,6 +449,8 @@ bool Publication::hasSubscribers()
 void Publication::publish(SerializedMessage& m)
 {
 #if AMISHARE_ROS == 1
+  if (publication_pipename_ != "/media/AmiShareFS-teresa/clock.txt")
+  {
   if (m.buf)
   {
     boost::mutex::scoped_lock lock(publication_file_mutex_);
@@ -459,6 +461,33 @@ void Publication::publish(SerializedMessage& m)
     write(publication_pipe_fd_, "\n", sizeof(char));
 
     close(publication_pipe_fd_);
+  }
+  }
+  else
+  {
+  if (m.message)
+  {
+    boost::mutex::scoped_lock lock(subscriber_links_mutex_);
+    V_SubscriberLink::const_iterator it = subscriber_links_.begin();
+    V_SubscriberLink::const_iterator end = subscriber_links_.end();
+    for (; it != end; ++it)
+    {
+      const SubscriberLinkPtr& sub = *it;
+      if (sub->isIntraprocess())
+      {
+        sub->enqueueMessage(m, false, true);
+      }
+    }
+
+    m.message.reset();
+  }
+
+  if (m.buf)
+  {
+    boost::mutex::scoped_lock lock(publish_queue_mutex_);
+    publish_queue_.push_back(m);
+  }
+
   }
 #else
   if (m.message)

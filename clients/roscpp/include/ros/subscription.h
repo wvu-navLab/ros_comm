@@ -112,6 +112,7 @@ public:
    */
 #if AMISHARE_ROS == 1
   uint32_t handleMessage(const SerializedMessage& m, bool ser, bool nocopy);
+  uint32_t handleMessage(const SerializedMessage& m, bool ser, bool nocopy, const boost::shared_ptr<M_string>& connection_header, const PublisherLinkPtr& link);
 #else
   uint32_t handleMessage(const SerializedMessage& m, bool ser, bool nocopy, const boost::shared_ptr<M_string>& connection_header, const PublisherLinkPtr& link);
 #endif
