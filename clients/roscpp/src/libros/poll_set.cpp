@@ -78,8 +78,6 @@ void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
   if (subscriptions_.size() == 0)
   {
     struct sockaddr_un addr;
-    //std::string tmp_node_name = "/ros-socket";
-    //std::string node_name = FIFO_PATH + tmp_node_name;
     inotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
@@ -97,10 +95,12 @@ void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
   //node_name.copy(&(buf[3]), amn.cchLength);
   std::string tmp_pathname = pathname;
   buf[1] = 0; buf[2] = 0;
-  buf[1] = uint16_t(tmp_pathname.length());
+  //uint16_t pathname_length = htons(uint16_t(tmp_pathname.length()));
+  //printf("pathname length %d %d\n", tmp_pathname.length(), pathname_length);
+  uint16_t pathname_length = uint16_t(tmp_pathname.length());
+  buf[1] = pathname_length;
   if (tmp_pathname.length() < 259)
   {
-    printf("pathname length %d\n", tmp_pathname.length());
     tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;
@@ -134,13 +134,11 @@ void PollSet::inotifyHandleEvents(int events)
     lstat(pathname.c_str(), &path_stat);
     int64_t iread_mtime = path_stat.st_mtim.tv_sec;
     int64_t imtime = (int64_t)mtime;
-    //iread_mtime = iread_mtime / 10;
-    //imtime = imtime / 10;
-    if (iread_mtime < imtime)
+    if (iread_mtime != imtime)
     {
       double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
-      printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
-      return;
+      //printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
+      //return;
     }
     for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
     {

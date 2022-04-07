@@ -471,7 +471,7 @@ void Subscription::mainPipeTest(int events)
     //lseek(subscription_pipe_fd_, 0, SEEK_SET);
     subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY, 0666);
     int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
-    if (size_to_read > 0)
+    if (size_to_read > 0 && bytes_read > 0)
     {
       message_read_buffer_.reset();
       message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
