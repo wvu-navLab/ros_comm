@@ -100,7 +100,6 @@ void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
   buf[1] = uint16_t(tmp_pathname.length());
   if (tmp_pathname.length() < 259)
   {
-    printf("pathname length %d\n", tmp_pathname.length());
     tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;

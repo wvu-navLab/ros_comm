@@ -103,13 +103,23 @@ Publication::Publication(const std::string &name,
   publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
 
 //if the path includes a directory that doesn't exist, make it before open
-  size_t found = name.find_last_of("/");
-  if (found != std::string::npos && found != 0)
+  size_t position = 1;
+  size_t found = name.find_first_of("/", position);
+  while (found != std::string::npos)
   {
+    position = found+1;
     std::string directory = name.substr(0, found);
     std::string openpath = AMISHARE_ROS_PATH + directory;
-    mkdir(openpath.c_str(), 0775);
+    struct stat statbuf;
+    if (stat(openpath.c_str(), &statbuf) == -1)
+    {
+      mkdir(openpath.c_str(), 0775);
+      printf("directory created at %s\n", openpath.c_str());
+    }
+    found = name.find_first_of("/", position);
   }
+  publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
+  close(publication_pipe_fd_);
 #endif
 }
 
