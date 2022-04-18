@@ -74,7 +74,9 @@ def rosmaster_main(argv=sys.argv, stdout=sys.stdout, env=os.environ):
     parser.add_option("--master-logger-level",
                       dest="master_logger_level", default=False, type=str,
                       help="set rosmaster.master logger level ('debug', 'info', 'warn', 'error', 'fatal')")
-
+    parser.add_option("-r", "--registration-path",
+                      dest="registration_path", default=None, type=str,
+                      help="path to registration file")
     options, args = parser.parse_args(argv[1:])
 
     # only arg that zenmaster supports is __log remapping of logfilename
@@ -123,7 +125,7 @@ WARNING ACHTUNG WARNING ACHTUNG WARNING
 
     try:
         logger.info("Starting ROS Master Node")
-        master = rosmaster.master.Master(port, options.num_workers)
+        master = rosmaster.master.Master(port, options.num_workers, options.registration_path)
         master.start()
 
         import time
@@ -137,3 +139,4 @@ WARNING ACHTUNG WARNING ACHTUNG WARNING
 
 if __name__ == "__main__":
     main()
+

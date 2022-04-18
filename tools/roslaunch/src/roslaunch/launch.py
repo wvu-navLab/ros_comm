@@ -108,7 +108,7 @@ def validate_master_launch(m, is_core, is_rostest=False):
         # User wants to start a master, and our configuration does
         # point to the local host, and we're not running as rostest.
         env_uri = rosgraph.get_master_uri()
-        env_host, env_port = rosgraph.network.parse_http_host_and_port(env_uri)
+        env_host, env_port, _ = rosgraph.network.parse_http_host_and_port(env_uri)
 
         if not rosgraph.network.is_local_address(env_host):
             # The ROS_MASTER_URI points to a different machine, warn user
@@ -235,7 +235,7 @@ class ROSLaunchRunner(object):
     monitored.
     """
     
-    def __init__(self, run_id, config, server_uri=None, pmon=None, is_core=False, remote_runner=None, is_child=False, is_rostest=False, num_workers=NUM_WORKERS, timeout=None,
+    def __init__(self, run_id, config, server_uri=None, pmon=None, is_core=False, registration_path=None, remote_runner=None, is_child=False, is_rostest=False, num_workers=NUM_WORKERS, timeout=None,
                  master_logger_level=False, sigint_timeout=DEFAULT_TIMEOUT_SIGINT, sigterm_timeout=DEFAULT_TIMEOUT_SIGTERM):
         """
         @param run_id: /run_id for this launch. If the core is not
@@ -291,6 +291,7 @@ class ROSLaunchRunner(object):
         self.server_uri = server_uri
         self.is_child = is_child
         self.is_core = is_core
+        self.registration_path = registration_path
         self.is_rostest = is_rostest
         self.num_workers = num_workers
         self.timeout = timeout
@@ -414,7 +415,7 @@ class ROSLaunchRunner(object):
 
             printlog("auto-starting new master")
             p = create_master_process(
-                self.run_id, m.type, get_ros_root(), m.get_port(), self.num_workers,
+                self.run_id, m.type, get_ros_root(), m.get_port(), self.registration_path, self.num_workers,
                 self.timeout, master_logger_level=self.master_logger_level,
                 sigint_timeout=self.sigint_timeout, sigterm_timeout=self.sigterm_timeout)
             self.pm.register_core_proc(p)
@@ -443,7 +444,7 @@ class ROSLaunchRunner(object):
         if self.server_uri:
             # store parent XML-RPC URI on param server
             # - param name is the /roslaunch/hostname:port so that multiple roslaunches can store at once
-            hostname, port = rosgraph.network.parse_http_host_and_port(self.server_uri)
+            hostname, port, _ = rosgraph.network.parse_http_host_and_port(self.server_uri)
             hostname = _hostname_to_rosname(hostname)
             self.logger.info("setting /roslaunch/uris/%s__%s' to %s"%(hostname, port, self.server_uri))
             param_server.setParam(_ID, '/roslaunch/uris/%s__%s'%(hostname, port),self.server_uri)

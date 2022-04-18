@@ -65,7 +65,7 @@ class NetProcess(object):
         self.name = name
         
         self.roslaunch_uri = roslaunch_uri
-        self.machine, _ = rosgraph.network.parse_http_host_and_port(roslaunch_uri)
+        self.machine, _, _ = rosgraph.network.parse_http_host_and_port(roslaunch_uri)
 
 def list_processes(roslaunch_uris=None):
     """

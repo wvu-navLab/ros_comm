@@ -46,6 +46,7 @@ import socket
 import struct
 import sys
 import platform
+import pathlib
 
 try:
     from cStringIO import StringIO #Python 2.x
@@ -89,7 +90,8 @@ def parse_http_host_and_port(url):
     if not p.scheme or not p.hostname:
         raise ValueError('not a valid URL')
     port = p.port if p.port else 80
-    return p.hostname, port
+    path = p.path if pathlib.Path(p.path).is_file() else None
+    return p.hostname, port, path
     
 def _is_unix_like_platform():
     """
