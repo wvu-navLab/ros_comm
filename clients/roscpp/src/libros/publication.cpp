@@ -34,6 +34,7 @@
 #include <std_msgs/Header.h>
 
 #if AMISHARE_ROS == 1
+#include "ros/param.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -98,17 +99,35 @@ Publication::Publication(const std::string &name,
   intraprocess_subscriber_count_(0)
 {
 #if AMISHARE_ROS == 1
+  std::string param_name = name + "_global";
+  if (param::has(param_name))
+  {
+    param::get(param_name, global_topic_);
+  }
+  else
+  {
+    global_topic_ = false;
+  }
+
   boost::mutex::scoped_lock lock(publication_file_mutex_);
   std::string pipename2 = ".txt";
   publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
 
 //if the path includes a directory that doesn't exist, make it before open
-  size_t found = name.find_last_of("/");
-  if (found != std::string::npos && found != 0)
+  size_t position = 1;
+  size_t found = name.find_first_of("/", position);
+  while (found != std::string::npos)
   {
+    position = found+1;
     std::string directory = name.substr(0, found);
     std::string openpath = AMISHARE_ROS_PATH + directory;
-    mkdir(openpath.c_str(), 0775);
+    struct stat statbuf;
+    if (stat(openpath.c_str(), &statbuf) == -1)
+    {
+      mkdir(openpath.c_str(), 0775);
+      printf("directory created at %s\n", openpath.c_str());
+    }
+    found = name.find_first_of("/", position);
   }
 #endif
 }
@@ -449,6 +468,8 @@ bool Publication::hasSubscribers()
 void Publication::publish(SerializedMessage& m)
 {
 #if AMISHARE_ROS == 1
+  if (global_topic_) 
+  {
   if (m.buf)
   {
     boost::mutex::scoped_lock lock(publication_file_mutex_);
@@ -459,6 +480,33 @@ void Publication::publish(SerializedMessage& m)
     write(publication_pipe_fd_, "\n", sizeof(char));
 
     close(publication_pipe_fd_);
+  }
+  }
+  else
+  {
+  if (m.message)
+  {
+    boost::mutex::scoped_lock lock(subscriber_links_mutex_);
+    V_SubscriberLink::const_iterator it = subscriber_links_.begin();
+    V_SubscriberLink::const_iterator end = subscriber_links_.end();
+    for (; it != end; ++it)
+    {
+      const SubscriberLinkPtr& sub = *it;
+      if (sub->isIntraprocess())
+      {
+        sub->enqueueMessage(m, false, true);
+      }
+    }
+
+    m.message.reset();
+  }
+
+  if (m.buf)
+  {
+    boost::mutex::scoped_lock lock(publish_queue_mutex_);
+    publish_queue_.push_back(m);
+  }
+
   }
 #else
   if (m.message)

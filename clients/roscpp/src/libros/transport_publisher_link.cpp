@@ -304,12 +304,10 @@ void TransportPublisherLink::handleMessage(const SerializedMessage& m, bool ser,
 
   SubscriptionPtr parent = parent_.lock();
 
-#if AMISHARE_ROS != 1
   if (parent)
   {
     stats_.drops_ += parent->handleMessage(m, ser, nocopy, getConnection()->getHeader().getValues(), shared_from_this());
   }
-#endif
 }
 
 std::string TransportPublisherLink::getTransportType()

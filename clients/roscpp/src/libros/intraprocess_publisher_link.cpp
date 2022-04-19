@@ -116,12 +116,10 @@ void IntraProcessPublisherLink::handleMessage(const SerializedMessage& m, bool s
 
   SubscriptionPtr parent = parent_.lock();
 
-#if AMISHARE_ROS != 1
   if (parent)
   {
     stats_.drops_ += parent->handleMessage(m, ser, nocopy, header_.getValues(), shared_from_this());
   }
-#endif
 }
 
 std::string IntraProcessPublisherLink::getTransportType()
