@@ -120,7 +120,6 @@ void IntraProcessPublisherLink::handleMessage(const SerializedMessage& m, bool s
   {
     stats_.drops_ += parent->handleMessage(m, ser, nocopy, header_.getValues(), shared_from_this());
   }
-
 }
 
 std::string IntraProcessPublisherLink::getTransportType()

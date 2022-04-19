@@ -34,6 +34,7 @@
 #include <std_msgs/Header.h>
 
 #if AMISHARE_ROS == 1
+#include "ros/param.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -98,6 +99,16 @@ Publication::Publication(const std::string &name,
   intraprocess_subscriber_count_(0)
 {
 #if AMISHARE_ROS == 1
+  std::string param_name = name + "_global";
+  if (param::has(param_name))
+  {
+    param::get(param_name, global_topic_);
+  }
+  else
+  {
+    global_topic_ = false;
+  }
+
   boost::mutex::scoped_lock lock(publication_file_mutex_);
   std::string pipename2 = ".txt";
   publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
@@ -118,8 +129,6 @@ Publication::Publication(const std::string &name,
     }
     found = name.find_first_of("/", position);
   }
-  publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
-  close(publication_pipe_fd_);
 #endif
 }
 
@@ -459,7 +468,7 @@ bool Publication::hasSubscribers()
 void Publication::publish(SerializedMessage& m)
 {
 #if AMISHARE_ROS == 1
-  if (publication_pipename_ != "/media/AmiShareFS-teresa/clock.txt")
+  if (global_topic_) 
   {
   if (m.buf)
   {
