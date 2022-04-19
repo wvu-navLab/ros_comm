@@ -2,6 +2,7 @@
 
 source user-variables.sh
 
+export CATKIN_PATH=~/catkin_ws
 cd $CATKIN_PATH 
 source devel/setup.bash
 
