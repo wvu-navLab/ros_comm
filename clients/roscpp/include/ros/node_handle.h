@@ -1546,6 +1546,11 @@ if (service)  // Enter if advertised service is valid
    */
   SteadyTimer createSteadyTimer(SteadyTimerOptions& ops) const;
 
+#if AMISHARE_ROS == 1
+  void setTopicRemote(const std::string& topic);
+  void setTopicLocal(const std::string& topic);
+#endif 
+
   /** \brief Set an arbitrary XML/RPC value on the parameter server.
    *
    * \param key The key to be used in the parameter server's dictionary

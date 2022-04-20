@@ -552,6 +552,20 @@ void NodeHandle::shutdown()
   ok_ = false;
 }
 
+#if AMISHARE_ROS == 1
+void NodeHandle::setTopicRemote(const std::string& topic)
+{
+  std::string param_name = topic + "_global";
+  setParam(param_name, true);
+}
+
+void NodeHandle::setTopicLocal(const std::string& topic)
+{
+  std::string param_name = topic + "_global";
+  setParam(param_name, false);
+}
+#endif
+
 void NodeHandle::setParam(const std::string& key, const XmlRpc::XmlRpcValue& v) const
 {
   return param::set(resolveName(key), v);

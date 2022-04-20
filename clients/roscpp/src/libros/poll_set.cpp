@@ -95,10 +95,7 @@ void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
   //node_name.copy(&(buf[3]), amn.cchLength);
   std::string tmp_pathname = pathname;
   buf[1] = 0; buf[2] = 0;
-  //uint16_t pathname_length = htons(uint16_t(tmp_pathname.length()));
-  //printf("pathname length %d %d\n", tmp_pathname.length(), pathname_length);
-  uint16_t pathname_length = uint16_t(tmp_pathname.length());
-  buf[1] = pathname_length;
+  buf[1] = uint16_t(tmp_pathname.length());
   if (tmp_pathname.length() < 259)
   {
     tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
@@ -137,7 +134,7 @@ void PollSet::inotifyHandleEvents(int events)
     if (iread_mtime != imtime)
     {
       double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
-      //printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
+      printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
       //return;
     }
     for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
