@@ -10,6 +10,7 @@ PACKAGE_NAME=$1
 LAUNCH_NAME=$2
 
 source user-variables.sh
+source $ROS_BASE/devel/setup.bash
 export ROS_MASTER_URI=http://$LOCAL_IP:11311; export ROS_HOSTNAME=$LOCAL_IP
 
 source $SCRIPT_PATH/amishare-ros-variables.sh

@@ -13,6 +13,6 @@ sed -i 's/CMAKE_AMISHARE_ROS/1/' CMakeLists.txt
 
 catkin build roscpp
 
-sed "s/CMAKE_AMISHARE_ROS_PATH//" CMakeLists.txt.temp > CMakeLists.txt
-sed -i "s/CMAKE_FIFO_PATH//" CMakeLists.txt
-sed -i 's/CMAKE_AMISHARE_ROS/0/' CMakeLists.txt
+#sed "s/CMAKE_AMISHARE_ROS_PATH//" CMakeLists.txt.temp > CMakeLists.txt
+#sed -i "s/CMAKE_FIFO_PATH//" CMakeLists.txt
+#sed -i 's/CMAKE_AMISHARE_ROS/0/' CMakeLists.txt
