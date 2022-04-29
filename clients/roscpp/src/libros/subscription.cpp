@@ -81,7 +81,7 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
 {
 #if AMISHARE_ROS == 1
   boost::mutex::scoped_lock lock(subscription_file_mutex_);
-  std::string pipename2 = ".txt";
+  std::string filename2 = ".txt";
   size_t found = name.find_last_of("/");
   if (found != std::string::npos && found != 0)
   {
@@ -89,8 +89,8 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
     std::string openpath = AMISHARE_ROS_PATH + directory;
     mkdir(openpath.c_str(), 0775);
   }
-  subscription_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
-  PollManager::instance()->getPollSet().inotifyAddWatch(subscription_pipename_, SubscriptionPtr(this));
+  subscription_filename_ = AMISHARE_ROS_PATH + name + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddWatch(subscription_filename_, SubscriptionPtr(this));
 #endif
 }
 
@@ -462,21 +462,21 @@ bool Subscription::negotiateConnection(const std::string& xmlrpc_uri)
 }
 
 #if AMISHARE_ROS == 1
-void Subscription::mainPipeTest(int events) 
+void Subscription::readMessage(int events) 
 {
   if (events & POLLIN)
   {
     boost::mutex::scoped_lock lock(subscription_file_mutex_);
     uint32_t size_to_read;
-    //lseek(subscription_pipe_fd_, 0, SEEK_SET);
-    subscription_pipe_fd_ = open(subscription_pipename_.c_str(), O_RDONLY, 0666);
-    int32_t bytes_read = read(subscription_pipe_fd_, &size_to_read, 4);
+    //lseek(subscription_file_fd_, 0, SEEK_SET);
+    subscription_file_fd_ = open(subscription_filename_.c_str(), O_RDONLY, 0666);
+    int32_t bytes_read = read(subscription_file_fd_, &size_to_read, 4);
     if (size_to_read > 0 && bytes_read > 0)
     {
       message_read_buffer_.reset();
       message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
 
-      bytes_read = read(subscription_pipe_fd_, message_read_buffer_.get(), size_to_read);
+      bytes_read = read(subscription_file_fd_, message_read_buffer_.get(), size_to_read);
     
       if (bytes_read < 0) perror("read");
       if (bytes_read > 0)
@@ -485,7 +485,7 @@ void Subscription::mainPipeTest(int events)
         handleMessage(m, true, false);
       }
     }
-    close(subscription_pipe_fd_);
+    close(subscription_file_fd_);
   }
 }
 #endif

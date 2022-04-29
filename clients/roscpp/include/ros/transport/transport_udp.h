@@ -169,6 +169,10 @@ private:
   uint8_t* reorder_start_;
   TransportUDPHeader reorder_header_;
   uint32_t reorder_bytes_;
+
+#if AMISHARE_ROS == 1
+  std::string this_address_, other_address_;
+#endif
 };
 
 }

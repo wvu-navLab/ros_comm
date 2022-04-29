@@ -72,19 +72,19 @@ PollSet::~PollSet()
 }
 
 #if AMISHARE_ROS == 1
-void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
+void PollSet::aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
 {
   std::string node_name = FIFO_PATH;
   if (subscriptions_.size() == 0)
   {
     struct sockaddr_un addr;
-    inotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+    aminotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
-    int ret = connect(inotify_fd_, (const struct sockaddr *) &addr, sizeof(addr));
+    int ret = connect(aminotify_fd_, (const struct sockaddr *) &addr, sizeof(addr));
     if (ret == -1) perror("connect");
-    addSocket(inotify_fd_, boost::bind(&PollSet::mainPipeTest, this, boost::placeholders::_1));
-    addEvents(inotify_fd_, POLLIN);
+    addSocket(aminotify_fd_, boost::bind(&PollSet::handleAmiNotify, this, boost::placeholders::_1));
+    addEvents(aminotify_fd_, POLLIN);
   }
   _AmiNotifyMessage amn;
   amn.ui8OpCode = 3;
@@ -101,14 +101,14 @@ void PollSet::inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
     tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;
-    int ret = write(inotify_fd_, buf, i);
+    int ret = write(aminotify_fd_, buf, i);
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
   subscriptions_.push_back(sub);
 }
 
-void PollSet::inotifyHandleEvents(int events)
+void PollSet::handleAmiNotify(int events)
 {
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
   std::string pathname;
@@ -117,12 +117,12 @@ void PollSet::inotifyHandleEvents(int events)
   uint16_t size_to_read;
   uint8_t opcode;
   double mtime;
-  len = read(inotify_fd_, &opcode, 1);
+  len = read(aminotify_fd_, &opcode, 1);
   if (len > 0)
   {
-    len = read(inotify_fd_, &mtime, 8);
-    len = read(inotify_fd_, &size_to_read, 2);
-    len = read(inotify_fd_, buf, size_to_read);
+    len = read(aminotify_fd_, &mtime, 8);
+    len = read(aminotify_fd_, &size_to_read, 2);
+    len = read(aminotify_fd_, buf, size_to_read);
     buf[size_to_read] = 0;
     if (len <= 0) return;
     pathname = buf;
@@ -141,15 +141,10 @@ void PollSet::inotifyHandleEvents(int events)
     {
       if (pathname == (*s)->getPathname())
       {
-        (*s)->mainPipeTest(events);
+        (*s)->readMessage(events);
       }
     }
   }
-}
-
-void PollSet::mainPipeTest(int events)
-{
-  inotifyHandleEvents(events);
 }
 #endif
 

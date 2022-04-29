@@ -106,12 +106,12 @@ Publication::Publication(const std::string &name,
   }
   else
   {
-    global_topic_ = true;
+    global_topic_ = false;
   }
 
   boost::mutex::scoped_lock lock(publication_file_mutex_);
-  std::string pipename2 = ".txt";
-  publication_pipename_ = AMISHARE_ROS_PATH + name + pipename2;
+  std::string filename2 = ".txt";
+  publication_filename_ = AMISHARE_ROS_PATH + name + filename2;
 
 //if the path includes a directory that doesn't exist, make it before open
   size_t position = 1;
@@ -473,13 +473,13 @@ void Publication::publish(SerializedMessage& m)
   if (m.buf)
   {
     boost::mutex::scoped_lock lock(publication_file_mutex_);
-    //publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
-    publication_pipe_fd_ = open(publication_pipename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
+    //publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
+    publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
 
-    write(publication_pipe_fd_, m.buf.get(), m.num_bytes);
-    write(publication_pipe_fd_, "\n", sizeof(char));
+    write(publication_file_fd_, m.buf.get(), m.num_bytes);
+    write(publication_file_fd_, "\n", sizeof(char));
 
-    close(publication_pipe_fd_);
+    close(publication_file_fd_);
   }
   }
   else
@@ -495,6 +495,10 @@ void Publication::publish(SerializedMessage& m)
       if (sub->isIntraprocess())
       {
         sub->enqueueMessage(m, false, true);
+      }
+      else
+      {
+        //printf("subscriber: %s\n", sub->);
       }
     }
 
