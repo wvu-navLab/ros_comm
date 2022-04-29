@@ -117,9 +117,8 @@ public:
   void signal();
 
 #if AMISHARE_ROS == 1
-  void inotifyAddWatch(std::string pathname, const SubscriptionPtr &sub);
-  void inotifyHandleEvents(int wd);
-  void mainPipeTest(int events);
+  void aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub);
+  void handleAmiNotify(int events);
 #endif
 
 private:
@@ -155,7 +154,7 @@ private:
   signal_fd_t signal_pipe_[2];
 
 #if AMISHARE_ROS == 1
-  int inotify_fd_;
+  int aminotify_fd_;
   L_Subscription subscriptions_;
   boost::mutex subscriptions_mutex_;
   struct _AmiNotifyMessage

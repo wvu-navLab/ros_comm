@@ -88,8 +88,8 @@ public:
   bool negotiateConnection(const std::string& xmlrpc_uri);
 
 #if AMISHARE_ROS == 1
-  void mainPipeTest(int events);
-  std::string getPathname() { return subscription_pipename_; }
+  void readMessage(int events);
+  std::string getPathname() { return subscription_filename_; }
 #endif
 
   void addLocalConnection(const PublicationPtr& pub);
@@ -223,8 +223,8 @@ private:
   uint32_t nonconst_callbacks_;
 
 #if AMISHARE_ROS == 1
-  std::string subscription_pipename_;
-  int subscription_pipe_fd_;
+  std::string subscription_filename_;
+  int subscription_file_fd_;
   boost::shared_array<uint8_t> message_read_buffer_;
   boost::mutex subscription_file_mutex_;
 #endif
