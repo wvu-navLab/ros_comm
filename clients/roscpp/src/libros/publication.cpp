@@ -106,7 +106,7 @@ Publication::Publication(const std::string &name,
   }
   else
   {
-    global_topic_ = false;
+    global_topic_ = true;
   }
 
   boost::mutex::scoped_lock lock(publication_file_mutex_);
