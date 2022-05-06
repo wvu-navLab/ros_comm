@@ -109,25 +109,24 @@ Publication::Publication(const std::string &name,
     global_topic_ = false;
   }
 
-  boost::mutex::scoped_lock lock(publication_file_mutex_);
-  std::string filename2 = ".txt";
-  publication_filename_ = AMISHARE_ROS_PATH + name + filename2;
-
-//if the path includes a directory that doesn't exist, make it before open
-  size_t position = 1;
-  size_t found = name.find_first_of("/", position);
-  while (found != std::string::npos)
+  if (global_topic_)
   {
-    position = found+1;
-    std::string directory = name.substr(0, found);
-    std::string openpath = AMISHARE_ROS_PATH + directory;
-    struct stat statbuf;
-    if (stat(openpath.c_str(), &statbuf) == -1)
+    boost::mutex::scoped_lock lock(publication_file_mutex_);
+    std::string filename2 = ".txt";
+    publication_filename_ = AMISHARE_ROS_PATH + name + filename2;
+  
+//if the path includes a directory that doesn't exist, make it before open
+    size_t position = 1;
+    size_t found = name.find_first_of("/", position);
+    while (found != std::string::npos)
     {
+      position = found+1;
+      std::string directory = name.substr(0, found);
+      std::string openpath = AMISHARE_ROS_PATH + directory;
       mkdir(openpath.c_str(), 0775);
       printf("directory created at %s\n", openpath.c_str());
+      found = name.find_first_of("/", position);
     }
-    found = name.find_first_of("/", position);
   }
 #endif
 }
