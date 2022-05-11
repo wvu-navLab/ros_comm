@@ -100,6 +100,9 @@ Publication::Publication(const std::string &name,
 {
 #if AMISHARE_ROS == 1
   std::string param_name = name + "_global";
+printf("publisher param name %s\n", param_name.c_str());
+  if (name.find("mavros/state") != std::string::npos)
+    param::set(param_name, true);
   if (param::has(param_name))
   {
     param::get(param_name, global_topic_);
