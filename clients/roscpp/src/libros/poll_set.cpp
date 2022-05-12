@@ -135,7 +135,7 @@ void PollSet::handleAmiNotify(int events)
     {
       double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
       printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
-      //return;
+      return;
     }
     for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
     {
