@@ -62,6 +62,7 @@
 #include <boost/make_shared.hpp>
 
 #if AMISHARE_ROS == 1
+#include "ros/param.h"
 #include <sys/stat.h>
 #endif
 
@@ -80,15 +81,32 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
 , transport_hints_(transport_hints)
 {
 #if AMISHARE_ROS == 1
-  boost::mutex::scoped_lock lock(subscription_file_mutex_);
-  std::string filename2 = ".txt";
-  size_t found = name.find_last_of("/");
-  if (found != std::string::npos && found != 0)
+  std::string param_name = name + "_global";
+  bool global_topic;
+  if (param::has(param_name))
   {
-    std::string directory = name.substr(0, found);
-    std::string openpath = AMISHARE_ROS_PATH + directory;
-    mkdir(openpath.c_str(), 0775);
+    param::get(param_name, global_topic);
   }
+  else
+  {
+    global_topic = false;
+  }
+
+  if (global_topic)
+  {
+    boost::mutex::scoped_lock lock(subscription_file_mutex_);
+    size_t position = 1;
+    size_t found = name.find_first_of("/", position);
+    while (found != std::string::npos)
+    {
+      position = found + 1;
+      std::string directory = name.substr(0, found);
+      std::string openpath = AMISHARE_ROS_PATH + directory;
+      mkdir(openpath.c_str(), 0775);
+      found = name.find_first_of("/", position);
+    }
+  }
+  std::string filename2 = ".txt";
   subscription_filename_ = AMISHARE_ROS_PATH + name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddWatch(subscription_filename_, SubscriptionPtr(this));
 #endif
