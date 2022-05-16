@@ -118,8 +118,12 @@ void PollSet::handleAmiNotify(int events)
   uint8_t opcode;
   double mtime;
   len = read(aminotify_fd_, &opcode, 1);
-  if (len > 0)
+  bool repeat = true;
+  int times = 0;
+  while (len > 0 && repeat)
   {
+    repeat = false;
+    times++;
     len = read(aminotify_fd_, &mtime, 8);
     len = read(aminotify_fd_, &size_to_read, 2);
     len = read(aminotify_fd_, buf, size_to_read);
@@ -129,13 +133,14 @@ void PollSet::handleAmiNotify(int events)
 
     struct stat path_stat;
     lstat(pathname.c_str(), &path_stat);
-    int64_t iread_mtime = path_stat.st_mtim.tv_sec;
-    int64_t imtime = (int64_t)mtime;
+    double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
+    int64_t iread_mtime = (int64_t)(read_mtime*10);
+    int64_t imtime = (int64_t)(mtime*10);
     if (iread_mtime != imtime)
     {
-      double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
-      printf("notification mtime %f, file mtime %f\n", mtime, read_mtime);
-      //return;
+      if (times < 10) repeat = true;
+      if (repeat) len = read(aminotify_fd_, &opcode, 1);
+      continue;
     }
     for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
     {
