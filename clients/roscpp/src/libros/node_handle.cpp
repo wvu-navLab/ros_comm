@@ -555,7 +555,15 @@ void NodeHandle::shutdown()
 #if AMISHARE_ROS == 1
 void NodeHandle::setTopicRemote(const std::string& topic)
 {
-  std::string param_name = topic + "_global";
+  std::string param_name;
+  if (topic[0] == '/')
+  {
+    param_name = topic + "_global";
+  }
+  else
+  {
+    param_name = namespace_ + "/" + topic + "_global";
+  }
   setParam(param_name, true);
 }
 
