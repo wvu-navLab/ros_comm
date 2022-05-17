@@ -163,6 +163,7 @@ bool TransportUDP::connect(const std::string& host, int port, int connection_id)
   }
 
 #if AMISHARE_ROS == 1
+/*
   char tmp_hostname[30];
   gethostname(tmp_hostname, 30);
 printf("hostnames: %s %s\n", tmp_hostname, host.c_str());
@@ -190,14 +191,15 @@ printf("hostnames: %s %s\n", tmp_hostname, host.c_str());
   struct sockaddr *name_addr = (sockaddr*)&sin2;
   getnameinfo(name_addr, sizeof(sin2), name_h, sizeof(name_h), NULL, 0, NI_NOFQDN);
   printf("got name: %s\n", name_h);
+*/
 #endif
  
   sockaddr_in sin = {};
   sin.sin_family = AF_INET;
-#if AMISHARE_ROS != 1  
+// #if AMISHARE_ROS != 1  
   if (inet_addr(host.c_str()) == INADDR_NONE)
   {
-#endif
+// #endif
     struct addrinfo* addr;
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -228,10 +230,12 @@ printf("hostnames: %s %s\n", tmp_hostname, host.c_str());
 
     freeaddrinfo(addr);
 #if AMISHARE_ROS == 1
+/*
   char name_h2[100];
   struct sockaddr *name_addr2 = (sockaddr*)&sin;
   getnameinfo(name_addr2, sizeof(sin), name_h2, sizeof(name_h2), NULL, 0, NI_NOFQDN);
   printf("also got name: %s\n", name_h2);
+*/
 #endif
 
     if (!found)
@@ -241,18 +245,20 @@ printf("hostnames: %s %s\n", tmp_hostname, host.c_str());
     }
 
     ROSCPP_LOG_DEBUG("Resolved host [%s] to [%s]", host.c_str(), inet_ntoa(sin.sin_addr));
-#if AMISHARE_ROS != 1  
+// #if AMISHARE_ROS != 1  
   }
   else
   {
     sin.sin_addr.s_addr = inet_addr(host.c_str()); // already an IP addr
   }
-#endif
+// #endif
 
 #if AMISHARE_ROS == 1
+/*
   this_address_ = inet_ntoa(sin2.sin_addr);
   other_address_ = inet_ntoa(sin.sin_addr);
   printf("this address %s, other address %s\n", this_address_.c_str(), other_address_.c_str());
+*/
 #endif
   sin.sin_port = htons(port);
 

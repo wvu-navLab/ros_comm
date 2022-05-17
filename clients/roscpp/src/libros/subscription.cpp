@@ -84,8 +84,6 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
   std::string param_name = name + "_global";
 printf("subscriber param name %s\n", param_name.c_str());
   bool global_topic;
-  if (name.find("mavros/state") != std::string::npos)
-    param::set(param_name, true);
   if (param::has(param_name))
   {
     param::get(param_name, global_topic);

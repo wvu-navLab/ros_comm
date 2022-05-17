@@ -101,8 +101,6 @@ Publication::Publication(const std::string &name,
 #if AMISHARE_ROS == 1
   std::string param_name = name + "_global";
 printf("publisher param name %s\n", param_name.c_str());
-  if (name.find("mavros/state") != std::string::npos)
-    param::set(param_name, true);
   if (param::has(param_name))
   {
     param::get(param_name, global_topic_);
@@ -117,6 +115,7 @@ printf("publisher param name %s\n", param_name.c_str());
     boost::mutex::scoped_lock lock(publication_file_mutex_);
     std::string filename2 = ".txt";
     publication_filename_ = AMISHARE_ROS_PATH + name + filename2;
+    printf("set filename %s\n", publication_filename_.c_str());
   
 //if the path includes a directory that doesn't exist, make it before open
     size_t position = 1;
@@ -470,49 +469,68 @@ bool Publication::hasSubscribers()
 void Publication::publish(SerializedMessage& m)
 {
 #if AMISHARE_ROS == 1
+  std::string param_name = name_ + "_global";
+  if (!global_topic_ && param::has(param_name))
+  {
+    param::get(param_name, global_topic_);
+    if (global_topic_)
+    {
+      boost::mutex::scoped_lock lock(publication_file_mutex_);
+      std::string filename2 = ".txt";
+      publication_filename_ = AMISHARE_ROS_PATH + name_ + filename2;
+  
+      size_t position = 1;
+      size_t found = name_.find_first_of("/", position);
+      while (found != std::string::npos)
+      {
+        position = found+1;
+        std::string directory = name_.substr(0, found);
+        std::string openpath = AMISHARE_ROS_PATH + directory;
+        mkdir(openpath.c_str(), 0775);
+        found = name_.find_first_of("/", position);
+      }
+    }
+  }
+
   if (global_topic_) 
   {
-  if (m.buf)
-  {
-    boost::mutex::scoped_lock lock(publication_file_mutex_);
-    //publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
-    publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
-
-    write(publication_file_fd_, m.buf.get(), m.num_bytes);
-    write(publication_file_fd_, "\n", sizeof(char));
-
-    close(publication_file_fd_);
-  }
+    if (m.buf)
+    {
+      boost::mutex::scoped_lock lock(publication_file_mutex_);
+      //publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
+      publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT, 0666);
+  
+      write(publication_file_fd_, m.buf.get(), m.num_bytes);
+      write(publication_file_fd_, "\n", sizeof(char));
+  
+      close(publication_file_fd_);
+    }
   }
   else
   {
-  if (m.message)
-  {
-    boost::mutex::scoped_lock lock(subscriber_links_mutex_);
-    V_SubscriberLink::const_iterator it = subscriber_links_.begin();
-    V_SubscriberLink::const_iterator end = subscriber_links_.end();
-    for (; it != end; ++it)
+    if (m.message)
     {
-      const SubscriberLinkPtr& sub = *it;
-      if (sub->isIntraprocess())
+      boost::mutex::scoped_lock lock(subscriber_links_mutex_);
+      V_SubscriberLink::const_iterator it = subscriber_links_.begin();
+      V_SubscriberLink::const_iterator end = subscriber_links_.end();
+      for (; it != end; ++it)
       {
-        sub->enqueueMessage(m, false, true);
+        const SubscriberLinkPtr& sub = *it;
+        if (sub->isIntraprocess())
+        {
+          sub->enqueueMessage(m, false, true);
+        }
       }
-      else
-      {
-        //printf("subscriber: %s\n", sub->);
-      }
+
+      m.message.reset();
     }
 
-    m.message.reset();
-  }
-
-  if (m.buf)
-  {
-    boost::mutex::scoped_lock lock(publish_queue_mutex_);
-    publish_queue_.push_back(m);
-  }
-
+    if (m.buf)
+    {
+      boost::mutex::scoped_lock lock(publish_queue_mutex_);
+      publish_queue_.push_back(m);
+    }
+  
   }
 #else
   if (m.message)
