@@ -41,6 +41,12 @@
 #include <boost/shared_array.hpp>
 #include <boost/bind.hpp>
 
+#if AMISHARE_ROS == 1
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 namespace ros
 {
 
@@ -57,6 +63,27 @@ Connection::Connection()
 , has_write_callback_(0)
 , sending_header_error_(false)
 {
+#if AMISHARE_ROS == 1
+  connection_name_ = "";
+  /*
+  std::string filename2 = ".txt";
+  connection_filename_ = AMISHARE_ROS_PATH + connection_name_ + filename2;
+  printf("set filename %s\n", connection_filename_.c_str());
+  
+//if the path includes a directory that doesn't exist, make it before open
+  size_t position = 1;
+  size_t found = connection_name_.find_first_of("/", position);
+  while (found != std::string::npos)
+  {
+    position = found+1;
+    std::string directory = connection_name_.substr(0, found);
+    std::string openpath = AMISHARE_ROS_PATH + directory;
+    mkdir(openpath.c_str(), 0775);
+    printf("directory created at %s\n", openpath.c_str());
+    found = connection_name_.find_first_of("/", position);
+  }
+  */
+#endif
 }
 
 Connection::~Connection()
@@ -205,7 +232,15 @@ void Connection::writeTransport()
   {
     uint32_t to_write = write_size_ - write_sent_;
     ROS_DEBUG_NAMED("superdebug", "Connection writing %d bytes", to_write);
+#if AMISHARE_ROS == 1
+    connection_file_fd_ = open(connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
+    ::write(connection_file_fd_, write_buffer_.get() + write_sent_, to_write);
+    ::write(connection_file_fd_, "\n", sizeof(char));
+    close(connection_file_fd_);
+    int32_t bytes_sent = to_write;
+#else
     int32_t bytes_sent = transport_->write(write_buffer_.get() + write_sent_, to_write);
+#endif
     ROS_DEBUG_NAMED("superdebug", "Connection wrote %d bytes", bytes_sent);
 
     if (bytes_sent < 0)
@@ -286,6 +321,55 @@ void Connection::read(uint32_t size, const ReadFinishedFunc& callback)
   readTransport();
 }
 
+#if AMISHARE_ROS == 1
+void Connection::write(const boost::shared_array<uint8_t>& buffer, uint32_t size, std::string name, const WriteFinishedFunc& callback, bool immediate)
+{
+  if (connection_name_ != name)
+  {
+    connection_name_ = name;
+    std::string filename2 = ".txt";
+    connection_filename_ = AMISHARE_ROS_PATH + connection_name_ + filename2;
+    printf("set filename %s\n", connection_filename_.c_str());
+    
+  //if the path includes a directory that doesn't exist, make it before open
+    size_t position = 1;
+    size_t found = connection_name_.find_first_of("/", position);
+    while (found != std::string::npos)
+    {
+      position = found+1;
+      std::string directory = connection_name_.substr(0, found);
+      std::string openpath = AMISHARE_ROS_PATH + directory;
+      mkdir(openpath.c_str(), 0775);
+      printf("directory created at %s\n", openpath.c_str());
+      found = connection_name_.find_first_of("/", position);
+    }
+  }
+  if (dropped_ || sending_header_error_)
+  {
+    return;
+  }
+
+  {
+    boost::mutex::scoped_lock lock(write_callback_mutex_);
+
+    ROS_ASSERT(!write_callback_);
+
+    write_callback_ = callback;
+    write_buffer_ = buffer;
+    write_size_ = size;
+    write_sent_ = 0;
+    has_write_callback_ = 1;
+  }
+
+  transport_->enableWrite();
+
+  if (immediate)
+  {
+    // write immediately if possible
+    writeTransport();
+  }
+}
+#endif
 void Connection::write(const boost::shared_array<uint8_t>& buffer, uint32_t size, const WriteFinishedFunc& callback, bool immediate)
 {
   if (dropped_ || sending_header_error_)

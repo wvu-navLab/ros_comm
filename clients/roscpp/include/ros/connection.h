@@ -142,6 +142,9 @@ public:
    * \param immediate Whether to immediately try to write as much data as possible to the socket or to pass
    * the data off to the server thread
    */
+#if AMISHARE_ROS == 1
+  void write(const boost::shared_array<uint8_t>& buffer, uint32_t size, std::string name, const WriteFinishedFunc& callback, bool immediate = true);
+#endif
   void write(const boost::shared_array<uint8_t>& buffer, uint32_t size, const WriteFinishedFunc& finished_callback, bool immedate = true);
 
   typedef boost::signals2::signal<void(const ConnectionPtr&, DropReason reason)> DropSignal;
@@ -263,6 +266,12 @@ private:
 
   /// If we're sending a header error we disable most other calls
   bool sending_header_error_;
+
+#if AMISHARE_ROS == 1
+  std::string connection_name_;
+  std::string connection_filename_;
+  int connection_file_fd_;
+#endif
 };
 typedef boost::shared_ptr<Connection> ConnectionPtr;
 

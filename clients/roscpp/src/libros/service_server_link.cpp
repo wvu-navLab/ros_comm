@@ -322,12 +322,19 @@ void ServiceServerLink::processNextCall()
       boost::mutex::scoped_lock lock(call_queue_mutex_);
       request = current_call_->req_;
     }
-
+#if AMISHARE_ROS == 1
+    connection_->write(request.buf, request.num_bytes, current_call_->name, boost::bind(&ServiceServerLink::onRequestWritten, this, boost::placeholders::_1));
+#else
     connection_->write(request.buf, request.num_bytes, boost::bind(&ServiceServerLink::onRequestWritten, this, boost::placeholders::_1));
+#endif
   }
 }
 
+#if AMISHARE_ROS == 1
+bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp, std::string name)
+#else
 bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp)
+#endif
 {
   CallInfoPtr info(boost::make_shared<CallInfo>());
   info->req_ = req;
@@ -336,6 +343,9 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
   info->finished_ = false;
   info->call_finished_ = false;
   info->caller_thread_id_ = boost::this_thread::get_id();
+#if AMISHARE_ROS == 1
+  info->name = name;
+#endif
 
   //ros::WallDuration(0.1).sleep();
 

@@ -63,6 +63,9 @@ private:
   {
     SerializedMessage req_;
     SerializedMessage* resp_;
+#if AMISHARE_ROS == 1
+    std::string name;
+#endif
 
     bool finished_;
     boost::condition_variable finished_condition_;
@@ -106,7 +109,11 @@ public:
    * If there is already a call happening in another thread, this will queue up the call and still block until
    * it has finished.
    */
+#if AMISHARE_ROS == 1
+  bool call(const SerializedMessage& req, SerializedMessage& resp, std::string name);
+#else
   bool call(const SerializedMessage& req, SerializedMessage& resp);
+#endif
 
 private:
   void onConnectionDropped(const ConnectionPtr& conn);

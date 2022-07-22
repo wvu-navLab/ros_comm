@@ -140,7 +140,11 @@ bool ServiceClient::call(const SerializedMessage& req, SerializedMessage& resp, 
     }
   }
 
+#if AMISHARE_ROS == 1
+  bool ret = link->call(req, resp, impl_->name_);
+#else
   bool ret = link->call(req, resp);
+#endif
   link.reset();
 
   // If we're shutting down but the node haven't finished yet, wait until we do
