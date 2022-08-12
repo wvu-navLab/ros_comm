@@ -42,6 +42,10 @@
 #include <boost/function.hpp>
 #include <boost/thread/mutex.hpp>
 
+#if AMISHARE_ROS == 1
+#include "ros/service_client_link.h"
+#endif
+
 namespace ros
 {
 
@@ -49,8 +53,6 @@ class Transport;
 typedef boost::shared_ptr<Transport> TransportPtr;
 
 #if AMISHARE_ROS == 1
-class ServiceClientLink;
-typedef boost::shared_ptr<ServiceClientLink> ServiceClientLinkPtr;
 typedef std::list<ServiceClientLinkPtr> L_ServiceClientLink;
 #endif
 

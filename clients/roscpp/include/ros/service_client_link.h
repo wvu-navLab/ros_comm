@@ -37,10 +37,6 @@
 
 #include <queue>
 
-#if AMISHARE_ROS == 1
-#include "ros/poll_manager.h"
-#endif
-
 namespace ros
 {
 class Header;

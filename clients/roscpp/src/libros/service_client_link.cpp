@@ -41,6 +41,10 @@
 #include "ros/this_node.h"
 #include "ros/file_log.h"
 
+#if AMISHARE_ROS == 1
+#include "ros/poll_manager.h"
+#endif
+
 #include <boost/bind.hpp>
 
 namespace ros
