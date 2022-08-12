@@ -141,7 +141,10 @@ bool ServiceClient::call(const SerializedMessage& req, SerializedMessage& resp, 
   }
 
 #if AMISHARE_ROS == 1
-  bool ret = link->call(req, resp, impl_->name_);
+  //std::string filename = AMISHARE_ROS_PATH + impl_->name_;
+  std::string filename = impl_->name_;
+printf("client call with name %s\n", filename.c_str());
+  bool ret = link->call(req, resp, filename);
 #else
   bool ret = link->call(req, resp);
 #endif

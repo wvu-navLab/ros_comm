@@ -98,6 +98,14 @@ bool ServiceClientLink::handleHeader(const Header& header)
       persistent_ = true;
     }
   }
+#if AMISHARE_ROS == 1
+  std::string filename2 = "_client.txt";
+  client_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
+  filename2 = "_server.txt";
+  server_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
+#endif
 
   ROSCPP_LOG_DEBUG("Service client [%s] wants service [%s] with md5sum [%s]", client_callerid.c_str(), service.c_str(), md5sum.c_str());
   ServicePublicationPtr ss = ServiceManager::instance()->lookupServicePublication(service);
@@ -174,7 +182,12 @@ void ServiceClientLink::onConnectionDropped(const ConnectionPtr& conn)
 void ServiceClientLink::onHeaderWritten(const ConnectionPtr& conn)
 {
   (void)conn;
+#if AMISHARE_ROS == 1
+printf("connection read with name %s\n", client_link_name_.c_str());
+  connection_->read(4, client_link_name_, boost::bind(&ServiceClientLink::onRequestLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
   connection_->read(4, boost::bind(&ServiceClientLink::onRequestLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
 }
 
 void ServiceClientLink::onRequestLength(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
@@ -198,7 +211,12 @@ void ServiceClientLink::onRequestLength(const ConnectionPtr& conn, const boost::
     return;
   }
 
+#if AMISHARE_ROS == 1
+printf("connection read with name %s\n", client_link_name_.c_str());
+  connection_->read(len, client_link_name_, boost::bind(&ServiceClientLink::onRequest, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
   connection_->read(len, boost::bind(&ServiceClientLink::onRequest, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
 }
 
 void ServiceClientLink::onRequest(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
@@ -226,7 +244,12 @@ void ServiceClientLink::onResponseWritten(const ConnectionPtr& conn)
 
   if (persistent_)
   {
+#if AMISHARE_ROS == 1
+printf("connection read with name %s\n", client_link_name_.c_str());
+    connection_->read(4, client_link_name_, boost::bind(&ServiceClientLink::onRequestLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
     connection_->read(4, boost::bind(&ServiceClientLink::onRequestLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
   }
   else
   {
@@ -237,7 +260,12 @@ void ServiceClientLink::onResponseWritten(const ConnectionPtr& conn)
 void ServiceClientLink::processResponse(bool ok, const SerializedMessage& res)
 {
   (void)ok;
+#if AMISHARE_ROS == 1
+printf("connection write with name %s\n", server_link_name_.c_str());
+  connection_->write(res.buf, res.num_bytes, server_link_name_, boost::bind(&ServiceClientLink::onResponseWritten, this, boost::placeholders::_1));
+#else
   connection_->write(res.buf, res.num_bytes, boost::bind(&ServiceClientLink::onResponseWritten, this, boost::placeholders::_1));
+#endif
 }
 
 

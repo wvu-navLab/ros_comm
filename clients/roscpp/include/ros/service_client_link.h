@@ -37,6 +37,10 @@
 
 #include <queue>
 
+#if AMISHARE_ROS == 1
+#include "ros/poll_manager.h"
+#endif
+
 namespace ros
 {
 class Header;
@@ -80,6 +84,12 @@ private:
   ServicePublicationWPtr parent_;
   bool persistent_;
   boost::signals2::connection dropped_conn_;
+
+#if AMISHARE_ROS == 1
+  std::string client_link_name_;
+  std::string server_link_name_;
+  std::string link_name_;
+#endif
 };
 typedef boost::shared_ptr<ServiceClientLink> ServiceClientLinkPtr;
 

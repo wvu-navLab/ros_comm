@@ -45,6 +45,8 @@
 
 #if AMISHARE_ROS == 1
 #include "ros/subscription.h"
+#include "ros/connection.h"
+#include "ros/service_server_link.h"
 #include "ros/this_node.h"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -72,10 +74,84 @@ PollSet::~PollSet()
 }
 
 #if AMISHARE_ROS == 1
+void PollSet::aminotifyAddServerService(std::string pathname, const ServiceServerLinkPtr &ser)
+{
+  std::string node_name = FIFO_PATH;
+  if (subscriptions_.size() == 0 && server_links_.size() == 0 && client_links_.size() == 0)
+  {
+    struct sockaddr_un addr;
+    aminotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
+    int ret = connect(aminotify_fd_, (const struct sockaddr *) &addr, sizeof(addr));
+    if (ret == -1) perror("connect");
+    addSocket(aminotify_fd_, boost::bind(&PollSet::handleAmiNotify, this, boost::placeholders::_1));
+    addEvents(aminotify_fd_, POLLIN);
+  }
+printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
+  _AmiNotifyMessage amn;
+  amn.ui8OpCode = 3;
+  amn.cchLength = node_name.length();
+  node_name.copy(amn.achPath, amn.cchLength);
+  char buf[259];
+  buf[0] = amn.ui8OpCode;
+  //node_name.copy(&(buf[3]), amn.cchLength);
+  std::string tmp_pathname = pathname;
+  buf[1] = 0; buf[2] = 0;
+  buf[1] = uint16_t(tmp_pathname.length());
+  if (tmp_pathname.length() < 259)
+  {
+    tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
+    int i = tmp_pathname.length() + 3;
+    buf[i] = 0;
+    int ret = write(aminotify_fd_, buf, i);
+  }
+
+  boost::mutex::scoped_lock lock(subscriptions_mutex_);
+  server_links_.push_back(ser);
+}
+
+void PollSet::aminotifyAddClientService(std::string pathname, const ServiceClientLinkPtr &ser)
+{
+  std::string node_name = FIFO_PATH;
+  if (subscriptions_.size() == 0 && server_links_.size() == 0 && client_links_.size() == 0)
+  {
+    struct sockaddr_un addr;
+    aminotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, node_name.c_str(), sizeof(addr.sun_path) - 1);
+    int ret = connect(aminotify_fd_, (const struct sockaddr *) &addr, sizeof(addr));
+    if (ret == -1) perror("connect");
+    addSocket(aminotify_fd_, boost::bind(&PollSet::handleAmiNotify, this, boost::placeholders::_1));
+    addEvents(aminotify_fd_, POLLIN);
+  }
+printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
+  _AmiNotifyMessage amn;
+  amn.ui8OpCode = 3;
+  amn.cchLength = node_name.length();
+  node_name.copy(amn.achPath, amn.cchLength);
+  char buf[259];
+  buf[0] = amn.ui8OpCode;
+  //node_name.copy(&(buf[3]), amn.cchLength);
+  std::string tmp_pathname = pathname;
+  buf[1] = 0; buf[2] = 0;
+  buf[1] = uint16_t(tmp_pathname.length());
+  if (tmp_pathname.length() < 259)
+  {
+    tmp_pathname.copy(&(buf[3]), tmp_pathname.length());
+    int i = tmp_pathname.length() + 3;
+    buf[i] = 0;
+    int ret = write(aminotify_fd_, buf, i);
+  }
+
+  boost::mutex::scoped_lock lock(subscriptions_mutex_);
+  client_links_.push_back(ser);
+}
+
 void PollSet::aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
 {
   std::string node_name = FIFO_PATH;
-  if (subscriptions_.size() == 0)
+  if (subscriptions_.size() == 0 && server_links_.size() == 0 && client_links_.size() == 0)
   {
     struct sockaddr_un addr;
     aminotify_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -148,6 +224,20 @@ void PollSet::handleAmiNotify(int events)
       if (pathname == (*s)->getPathname())
       {
         (*s)->readMessage(events);
+      }
+    }
+    for (L_ServiceServerLink::iterator s = server_links_.begin(); s != server_links_.end(); ++s)
+    {
+      if (pathname == (*s)->getConnection()->getReadPathname())
+      {
+        (*s)->processNextCall();
+      }
+    }
+    for (L_ServiceClientLink::iterator s = client_links_.begin(); s != client_links_.end(); ++s)
+    {
+      if (pathname == (*s)->getConnection()->getReadPathname())
+      {
+        //(*s)->readMessage(events);
       }
     }
   }

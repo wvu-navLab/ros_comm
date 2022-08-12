@@ -44,6 +44,10 @@
 
 #include <sstream>
 
+#if AMISHARE_ROS == 1
+#include "ros/poll_manager.h"
+#endif
+
 namespace ros
 {
 
@@ -124,6 +128,7 @@ bool ServiceServerLink::initialize(const ConnectionPtr& connection)
   header["persistent"] = persistent_ ? "1" : "0";
   header.insert(extra_outgoing_header_values_.begin(), extra_outgoing_header_values_.end());
 
+  printf("service server link initialize -> connection write header\n");
   connection_->writeHeader(header, boost::bind(&ServiceServerLink::onHeaderWritten, this, boost::placeholders::_1));
 
   return true;
@@ -131,12 +136,14 @@ bool ServiceServerLink::initialize(const ConnectionPtr& connection)
 
 void ServiceServerLink::onHeaderWritten(const ConnectionPtr& conn)
 {
+printf("service server link on header written\n");
   (void)conn;
   header_written_ = true;
 }
 
 bool ServiceServerLink::onHeaderReceived(const ConnectionPtr& conn, const Header& header)
 {
+printf("service server link on header received\n");
   (void)conn;
   std::string md5sum, type;
   if (!header.getValue("md5sum", md5sum))
@@ -181,7 +188,12 @@ void ServiceServerLink::onRequestWritten(const ConnectionPtr& conn)
 {
   (void)conn;
   //ros::WallDuration(0.1).sleep();
+#if AMISHARE_ROS == 1
+printf("connection read with name %s\n", server_link_name_.c_str());
+  connection_->read(5, server_link_name_, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
   connection_->read(5, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
 }
 
 void ServiceServerLink::onResponseOkAndLength(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
@@ -218,7 +230,12 @@ void ServiceServerLink::onResponseOkAndLength(const ConnectionPtr& conn, const b
 
   if (len > 0)
   {
+#if AMISHARE_ROS == 1
+printf("connection read with name %s\n", server_link_name_.c_str());
+    connection_->read(len, server_link_name_, boost::bind(&ServiceServerLink::onResponse, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
     connection_->read(len, boost::bind(&ServiceServerLink::onResponse, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
   }
   else
   {
@@ -280,6 +297,7 @@ void ServiceServerLink::callFinished()
 
 void ServiceServerLink::processNextCall()
 {
+printf("service server link processNextCall with name %s\n", client_link_name_.c_str());
   bool empty = false;
   {
     boost::mutex::scoped_lock lock(call_queue_mutex_);
@@ -323,7 +341,8 @@ void ServiceServerLink::processNextCall()
       request = current_call_->req_;
     }
 #if AMISHARE_ROS == 1
-    connection_->write(request.buf, request.num_bytes, current_call_->name, boost::bind(&ServiceServerLink::onRequestWritten, this, boost::placeholders::_1));
+printf("calling connection write with name %s\n", client_link_name_.c_str());
+    connection_->write(request.buf, request.num_bytes, client_link_name_, boost::bind(&ServiceServerLink::onRequestWritten, this, boost::placeholders::_1));
 #else
     connection_->write(request.buf, request.num_bytes, boost::bind(&ServiceServerLink::onRequestWritten, this, boost::placeholders::_1));
 #endif
@@ -336,6 +355,7 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
 bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp)
 #endif
 {
+printf("service server link call with name %s\n", name.c_str());
   CallInfoPtr info(boost::make_shared<CallInfo>());
   info->req_ = req;
   info->resp_ = &resp;
@@ -344,7 +364,16 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
   info->call_finished_ = false;
   info->caller_thread_id_ = boost::this_thread::get_id();
 #if AMISHARE_ROS == 1
-  info->name = name;
+  if (link_name_ != name)
+  {
+    link_name_ = name;
+    std::string filename2 = "_server.txt";
+    server_link_name_ = AMISHARE_ROS_PATH + name + filename2;
+    PollManager::instance()->getPollSet().aminotifyAddServerService(server_link_name_, ServiceServerLinkPtr(this));
+    filename2 = "_client.txt";
+    client_link_name_ = AMISHARE_ROS_PATH + name + filename2;
+    PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
+  }
 #endif
 
   //ros::WallDuration(0.1).sleep();
@@ -360,6 +389,7 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
 
     boost::mutex::scoped_lock lock(call_queue_mutex_);
 
+printf("immediate %d header_written_ %d header_read_ %d\n", immediate, header_written_, header_read_);
     if (call_queue_.empty() && header_written_ && header_read_)
     {
       immediate = true;

@@ -64,25 +64,8 @@ Connection::Connection()
 , sending_header_error_(false)
 {
 #if AMISHARE_ROS == 1
-  connection_name_ = "";
-  /*
-  std::string filename2 = ".txt";
-  connection_filename_ = AMISHARE_ROS_PATH + connection_name_ + filename2;
-  printf("set filename %s\n", connection_filename_.c_str());
-  
-//if the path includes a directory that doesn't exist, make it before open
-  size_t position = 1;
-  size_t found = connection_name_.find_first_of("/", position);
-  while (found != std::string::npos)
-  {
-    position = found+1;
-    std::string directory = connection_name_.substr(0, found);
-    std::string openpath = AMISHARE_ROS_PATH + directory;
-    mkdir(openpath.c_str(), 0775);
-    printf("directory created at %s\n", openpath.c_str());
-    found = connection_name_.find_first_of("/", position);
-  }
-  */
+  read_connection_filename_ = "";
+  write_connection_filename_ = "";
 #endif
 }
 
@@ -128,11 +111,115 @@ void Connection::onReadable(const TransportPtr& transport)
   (void)transport;
   ROS_ASSERT(transport == transport_);
 
+#if AMISHARE_ROS == 1
+  if (read_connection_filename_ != "")
+  {
+    readTransport(read_connection_filename_);
+  }
+  else
+  {
+    readTransport();
+  }
+#else
   readTransport();
+#endif
 }
 
+#if AMISHARE_ROS == 1
+void Connection::readTransport(std::string name)
+{
+printf("connection readTransport with name %s\n", name.c_str());
+  boost::recursive_mutex::scoped_try_lock lock(read_mutex_);
+
+  if (!lock.owns_lock() || dropped_ || reading_)
+  {
+    return;
+  }
+
+  reading_ = true;
+
+  while (!dropped_ && has_read_callback_)
+  {
+    ROS_ASSERT(read_buffer_);
+    uint32_t to_read = read_size_ - read_filled_;
+    if (to_read > 0)
+    {
+      connection_file_fd_ = open(read_connection_filename_.c_str(), O_RDONLY, 0666);
+printf("tried to open file to read %s\n", read_connection_filename_.c_str());
+      int32_t bytes_read = ::read(connection_file_fd_, read_buffer_.get() + read_filled_, to_read);
+      if (bytes_read == -1) perror("read");
+      close(connection_file_fd_);
+      ROS_DEBUG_NAMED("superdebug", "Connection read %d bytes", bytes_read);
+      if (dropped_)
+      {
+        return;
+      }
+      else if (bytes_read < 0)
+      {
+        // Bad read, throw away results and report error
+        ReadFinishedFunc callback;
+        callback = read_callback_;
+        read_callback_.clear();
+        read_buffer_.reset();
+        uint32_t size = read_size_;
+        read_size_ = 0;
+        read_filled_ = 0;
+        has_read_callback_ = 0;
+
+        if (callback)
+        {
+          callback(shared_from_this(), read_buffer_, size, false);
+        }
+
+        break;
+      }
+
+      read_filled_ += bytes_read;
+    }
+
+    ROS_ASSERT((int32_t)read_size_ >= 0);
+    ROS_ASSERT((int32_t)read_filled_ >= 0);
+    ROS_ASSERT_MSG(read_filled_ <= read_size_, "read_filled_ = %d, read_size_ = %d", read_filled_, read_size_);
+
+    if (read_filled_ == read_size_ && !dropped_)
+    {
+      ReadFinishedFunc callback;
+      uint32_t size;
+      boost::shared_array<uint8_t> buffer;
+
+      ROS_ASSERT(has_read_callback_);
+
+      // store off the read info in case another read() call is made from within the callback
+      callback = read_callback_;
+      size = read_size_;
+      buffer = read_buffer_;
+      read_callback_.clear();
+      read_buffer_.reset();
+      read_size_ = 0;
+      read_filled_ = 0;
+      has_read_callback_ = 0;
+
+      ROS_DEBUG_NAMED("superdebug", "Calling read callback");
+printf("read callback from readTransport for name %s\n", name.c_str());
+      callback(shared_from_this(), buffer, size, true);
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  if (!has_read_callback_)
+  {
+    transport_->disableRead();
+  }
+
+  reading_ = false;
+}
+#endif
 void Connection::readTransport()
 {
+printf("connection readTransport\n");
   boost::recursive_mutex::scoped_try_lock lock(read_mutex_);
 
   if (!lock.owns_lock() || dropped_ || reading_)
@@ -216,6 +303,81 @@ void Connection::readTransport()
   reading_ = false;
 }
 
+#if AMISHARE_ROS == 1
+void Connection::writeTransport(std::string name)
+{
+  boost::recursive_mutex::scoped_try_lock lock(write_mutex_);
+
+  if (!lock.owns_lock() || dropped_ || writing_)
+  {
+    return;
+  }
+
+  writing_ = true;
+  bool can_write_more = true;
+
+  while (has_write_callback_ && can_write_more && !dropped_)
+  {
+    uint32_t to_write = write_size_ - write_sent_;
+    ROS_DEBUG_NAMED("superdebug", "Connection writing %d bytes", to_write);
+    connection_file_fd_ = open(write_connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
+ printf("open file for writing %s\n", write_connection_filename_.c_str());
+ printf("write_sent_ %d, to_write %d\n", write_sent_, to_write);
+ printf("write buffer [%x]\n", write_buffer_.get());
+    int ret;
+    ret = ::write(connection_file_fd_, write_buffer_.get() + write_sent_, to_write);
+    if (ret == -1) perror("write");
+    ret = ::write(connection_file_fd_, "\n", sizeof(char));
+    if (ret == -1) perror("write");
+    close(connection_file_fd_);
+    int32_t bytes_sent = to_write;
+    ROS_DEBUG_NAMED("superdebug", "Connection wrote %d bytes", bytes_sent);
+
+    if (bytes_sent < 0)
+    {
+      writing_ = false;
+      return;
+    }
+
+    write_sent_ += bytes_sent;
+
+    if (bytes_sent < (int)write_size_ - (int)write_sent_)
+    {
+      can_write_more = false;
+    }
+
+    if (write_sent_ == write_size_ && !dropped_)
+    {
+      WriteFinishedFunc callback;
+
+      {
+        boost::mutex::scoped_lock lock(write_callback_mutex_);
+        ROS_ASSERT(has_write_callback_);
+        // Store off a copy of the callback in case another write() call happens in it
+        callback = write_callback_;
+        write_callback_ = WriteFinishedFunc();
+        write_buffer_ = boost::shared_array<uint8_t>();
+        write_sent_ = 0;
+        write_size_ = 0;
+        has_write_callback_ = 0;
+      }
+
+      ROS_DEBUG_NAMED("superdebug", "Calling write callback");
+      callback(shared_from_this());
+    }
+  }
+
+  {
+    boost::mutex::scoped_lock lock(write_callback_mutex_);
+    if (!has_write_callback_)
+    {
+      transport_->disableWrite();
+    }
+  }
+
+  writing_ = false;
+}
+#endif
 void Connection::writeTransport()
 {
   boost::recursive_mutex::scoped_try_lock lock(write_mutex_);
@@ -232,15 +394,7 @@ void Connection::writeTransport()
   {
     uint32_t to_write = write_size_ - write_sent_;
     ROS_DEBUG_NAMED("superdebug", "Connection writing %d bytes", to_write);
-#if AMISHARE_ROS == 1
-    connection_file_fd_ = open(connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
-    ::write(connection_file_fd_, write_buffer_.get() + write_sent_, to_write);
-    ::write(connection_file_fd_, "\n", sizeof(char));
-    close(connection_file_fd_);
-    int32_t bytes_sent = to_write;
-#else
     int32_t bytes_sent = transport_->write(write_buffer_.get() + write_sent_, to_write);
-#endif
     ROS_DEBUG_NAMED("superdebug", "Connection wrote %d bytes", bytes_sent);
 
     if (bytes_sent < 0)
@@ -296,6 +450,52 @@ void Connection::onWriteable(const TransportPtr& transport)
   writeTransport();
 }
 
+#if AMISHARE_ROS == 1
+void Connection::read(uint32_t size, std::string name, const ReadFinishedFunc& callback)
+{
+printf("connection read with name %s\n", name.c_str());
+  if (read_connection_filename_ != name)
+  {
+    read_connection_filename_ = name;
+    printf("set filename %s\n", read_connection_filename_.c_str());
+    
+  //if the path includes a directory that doesn't exist, make it before open
+    size_t position = 1;
+    size_t found = read_connection_filename_.find_first_of("/", position);
+    while (found != std::string::npos)
+    {
+      position = found+1;
+      std::string directory = read_connection_filename_.substr(0, found);
+      std::string openpath = directory;
+      mkdir(openpath.c_str(), 0775);
+      printf("directory created at %s\n", openpath.c_str());
+      found = read_connection_filename_.find_first_of("/", position);
+    }
+  }
+
+  if (dropped_ || sending_header_error_)
+  {
+    return;
+  }
+
+  {
+    boost::recursive_mutex::scoped_lock lock(read_mutex_);
+
+    ROS_ASSERT(!read_callback_);
+
+    read_callback_ = callback;
+    read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size]);
+    read_size_ = size;
+    read_filled_ = 0;
+    has_read_callback_ = 1;
+  }
+
+  transport_->enableRead();
+
+  // read immediately if possible
+  readTransport(name);
+}
+#endif
 void Connection::read(uint32_t size, const ReadFinishedFunc& callback)
 {
   if (dropped_ || sending_header_error_)
@@ -324,24 +524,23 @@ void Connection::read(uint32_t size, const ReadFinishedFunc& callback)
 #if AMISHARE_ROS == 1
 void Connection::write(const boost::shared_array<uint8_t>& buffer, uint32_t size, std::string name, const WriteFinishedFunc& callback, bool immediate)
 {
-  if (connection_name_ != name)
+printf("connection write with name %s\n", name.c_str());
+  if (write_connection_filename_ != name)
   {
-    connection_name_ = name;
-    std::string filename2 = ".txt";
-    connection_filename_ = AMISHARE_ROS_PATH + connection_name_ + filename2;
-    printf("set filename %s\n", connection_filename_.c_str());
+    write_connection_filename_ = name;
+    printf("set filename %s\n", write_connection_filename_.c_str());
     
   //if the path includes a directory that doesn't exist, make it before open
     size_t position = 1;
-    size_t found = connection_name_.find_first_of("/", position);
+    size_t found = write_connection_filename_.find_first_of("/", position);
     while (found != std::string::npos)
     {
       position = found+1;
-      std::string directory = connection_name_.substr(0, found);
-      std::string openpath = AMISHARE_ROS_PATH + directory;
+      std::string directory = write_connection_filename_.substr(0, found);
+      std::string openpath = directory;
       mkdir(openpath.c_str(), 0775);
       printf("directory created at %s\n", openpath.c_str());
-      found = connection_name_.find_first_of("/", position);
+      found = write_connection_filename_.find_first_of("/", position);
     }
   }
   if (dropped_ || sending_header_error_)
@@ -366,7 +565,7 @@ void Connection::write(const boost::shared_array<uint8_t>& buffer, uint32_t size
   if (immediate)
   {
     // write immediately if possible
-    writeTransport();
+    writeTransport(name);
   }
 }
 #endif

@@ -48,6 +48,12 @@ namespace ros
 class Transport;
 typedef boost::shared_ptr<Transport> TransportPtr;
 
+#if AMISHARE_ROS == 1
+class ServiceClientLink;
+typedef boost::shared_ptr<ServiceClientLink> ServiceClientLinkPtr;
+typedef std::list<ServiceClientLinkPtr> L_ServiceClientLink;
+#endif
+
 /**
  * \brief Manages a set of sockets being polled through the poll() function call.
  *
@@ -117,6 +123,8 @@ public:
   void signal();
 
 #if AMISHARE_ROS == 1
+  void aminotifyAddServerService(std::string pathname, const ServiceServerLinkPtr &ser);
+  void aminotifyAddClientService(std::string pathname, const ServiceClientLinkPtr &ser);
   void aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub);
   void handleAmiNotify(int events);
 #endif
@@ -156,6 +164,8 @@ private:
 #if AMISHARE_ROS == 1
   int aminotify_fd_;
   L_Subscription subscriptions_;
+  L_ServiceServerLink server_links_;
+  L_ServiceClientLink client_links_;
   boost::mutex subscriptions_mutex_;
   struct _AmiNotifyMessage
   {

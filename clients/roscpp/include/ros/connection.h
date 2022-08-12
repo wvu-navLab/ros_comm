@@ -125,6 +125,9 @@ public:
    * \param size The size, in bytes, of data to read
    * \param finished_callback The function to call when this read is finished
    */
+#if AMISHARE_ROS == 1
+  void read(uint32_t size, std::string name, const ReadFinishedFunc& finished_callback);
+#endif
   void read(uint32_t size, const ReadFinishedFunc& finished_callback);
   /**
    * \brief Write a buffer of bytes, calling a callback when finished
@@ -169,6 +172,11 @@ public:
    */
   Header& getHeader() { return header_; }
 
+#if AMISHARE_ROS == 1
+    std::string getWritePathname() { return write_connection_filename_; }
+    std::string getReadPathname() { return read_connection_filename_; }
+#endif
+
   /**
    * \brief Set the Header associated with this connection (used with UDPROS, 
    *        which receives the connection during XMLRPC negotiation).
@@ -203,10 +211,16 @@ private:
    * \brief Read data off our transport.  Also manages calling the read callback.  If there is any data to be read,
    * read() will read it until the fixed read buffer is filled.
    */
+#if AMISHARE_ROS == 1
+  void readTransport(std::string);
+#endif
   void readTransport();
   /**
    * \brief Write data to our transport.  Also manages calling the write callback.
    */
+#if AMISHARE_ROS == 1
+  void writeTransport(std::string);
+#endif
   void writeTransport();
 
   /// Are we a server?  Servers wait for clients to send a header and then send a header in response.
@@ -268,8 +282,8 @@ private:
   bool sending_header_error_;
 
 #if AMISHARE_ROS == 1
-  std::string connection_name_;
-  std::string connection_filename_;
+  std::string read_connection_filename_;
+  std::string write_connection_filename_;
   int connection_file_fd_;
 #endif
 };

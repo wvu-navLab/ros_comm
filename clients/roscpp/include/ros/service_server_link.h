@@ -63,9 +63,6 @@ private:
   {
     SerializedMessage req_;
     SerializedMessage* resp_;
-#if AMISHARE_ROS == 1
-    std::string name;
-#endif
 
     bool finished_;
     boost::condition_variable finished_condition_;
@@ -128,7 +125,13 @@ private:
    * \brief Pops the next call off the queue if one is available.  If this is a non-persistent connection and the queue is empty
    * it will also drop the connection.
    */
+#if AMISHARE_ROS == 1
+public:
+#endif
   void processNextCall();
+#if AMISHARE_ROS == 1
+private:
+#endif
   /**
    * \brief Clear all calls, notifying them that they've failed
    */
@@ -157,6 +160,12 @@ private:
   boost::mutex call_queue_mutex_;
 
   CallInfoPtr current_call_;
+
+#if AMISHARE_ROS == 1
+  std::string server_link_name_;
+  std::string client_link_name_;
+  std::string link_name_;
+#endif
 
   bool dropped_;
 };

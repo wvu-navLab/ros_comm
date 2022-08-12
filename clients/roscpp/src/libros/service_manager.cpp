@@ -236,7 +236,6 @@ ServiceServerLinkPtr ServiceManager::createServiceServerLink(const std::string& 
                                              const std::string& request_md5sum, const std::string& response_md5sum,
                                              const M_string& header_values)
 {
-
   boost::recursive_mutex::scoped_lock shutdown_lock(shutting_down_mutex_);
   if (shutting_down_)
   {
