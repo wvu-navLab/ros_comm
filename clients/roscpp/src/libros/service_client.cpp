@@ -140,14 +140,7 @@ bool ServiceClient::call(const SerializedMessage& req, SerializedMessage& resp, 
     }
   }
 
-#if AMISHARE_ROS == 1
-  //std::string filename = AMISHARE_ROS_PATH + impl_->name_;
-  std::string filename = impl_->name_;
-printf("client call with name %s\n", filename.c_str());
-  bool ret = link->call(req, resp, filename);
-#else
   bool ret = link->call(req, resp);
-#endif
   link.reset();
 
   // If we're shutting down but the node haven't finished yet, wait until we do

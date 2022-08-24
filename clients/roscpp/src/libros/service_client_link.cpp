@@ -80,6 +80,7 @@ bool ServiceClientLink::initialize(const ConnectionPtr& connection)
 
 bool ServiceClientLink::handleHeader(const Header& header)
 {
+printf("service client link handle header\n");
   std::string md5sum, service, client_callerid;
   if (!header.getValue("md5sum", md5sum)
    || !header.getValue("service", service)
@@ -185,6 +186,7 @@ void ServiceClientLink::onConnectionDropped(const ConnectionPtr& conn)
 
 void ServiceClientLink::onHeaderWritten(const ConnectionPtr& conn)
 {
+printf("service client link on header written\n");
   (void)conn;
 #if AMISHARE_ROS == 1
 printf("connection read with name %s\n", client_link_name_.c_str());
@@ -196,6 +198,7 @@ printf("connection read with name %s\n", client_link_name_.c_str());
 
 void ServiceClientLink::onRequestLength(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
 {
+printf("service client link on requenst length\n");
   (void)size;
   if (!success)
     return;
@@ -225,6 +228,7 @@ printf("connection read with name %s\n", client_link_name_.c_str());
 
 void ServiceClientLink::onRequest(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
 {
+printf("service client link on request\n");
   (void)conn;
   if (!success)
     return;
@@ -243,6 +247,7 @@ void ServiceClientLink::onRequest(const ConnectionPtr& conn, const boost::shared
 
 void ServiceClientLink::onResponseWritten(const ConnectionPtr& conn)
 {
+printf("service client link on response written\n");
   (void)conn;
   ROS_ASSERT(conn == connection_);
 
@@ -263,6 +268,7 @@ printf("connection read with name %s\n", client_link_name_.c_str());
 
 void ServiceClientLink::processResponse(bool ok, const SerializedMessage& res)
 {
+printf("service client link process response\n");
   (void)ok;
 #if AMISHARE_ROS == 1
 printf("connection write with name %s\n", server_link_name_.c_str());

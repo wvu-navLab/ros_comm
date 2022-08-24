@@ -118,6 +118,7 @@ void Connection::onReadable(const TransportPtr& transport)
   }
   else
   {
+  printf("*** readTransport before filename\n");
     readTransport();
   }
 #else
@@ -149,6 +150,7 @@ printf("tried to open file to read %s\n", read_connection_filename_.c_str());
       int32_t bytes_read = ::read(connection_file_fd_, read_buffer_.get() + read_filled_, to_read);
       if (bytes_read == -1) perror("read");
       close(connection_file_fd_);
+printf("read %d bytes [%s]\n", bytes_read, read_buffer_.get());
       ROS_DEBUG_NAMED("superdebug", "Connection read %d bytes", bytes_read);
       if (dropped_)
       {
@@ -219,7 +221,7 @@ printf("read callback from readTransport for name %s\n", name.c_str());
 #endif
 void Connection::readTransport()
 {
-printf("connection readTransport\n");
+printf("*** connection readTransport\n");
   boost::recursive_mutex::scoped_try_lock lock(read_mutex_);
 
   if (!lock.owns_lock() || dropped_ || reading_)
@@ -323,7 +325,7 @@ void Connection::writeTransport(std::string name)
     connection_file_fd_ = open(write_connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
  printf("open file for writing %s\n", write_connection_filename_.c_str());
  printf("write_sent_ %d, to_write %d\n", write_sent_, to_write);
- printf("write buffer [%x]\n", write_buffer_.get());
+ printf("write buffer [%s]\n", write_buffer_.get());
     int ret;
     ret = ::write(connection_file_fd_, write_buffer_.get() + write_sent_, to_write);
     if (ret == -1) perror("write");
@@ -460,6 +462,7 @@ printf("connection read with name %s\n", name.c_str());
     printf("set filename %s\n", read_connection_filename_.c_str());
     
   //if the path includes a directory that doesn't exist, make it before open
+    /*
     size_t position = 1;
     size_t found = read_connection_filename_.find_first_of("/", position);
     while (found != std::string::npos)
@@ -471,6 +474,7 @@ printf("connection read with name %s\n", name.c_str());
       printf("directory created at %s\n", openpath.c_str());
       found = read_connection_filename_.find_first_of("/", position);
     }
+    */
   }
 
   if (dropped_ || sending_header_error_)
@@ -518,6 +522,7 @@ void Connection::read(uint32_t size, const ReadFinishedFunc& callback)
   transport_->enableRead();
 
   // read immediately if possible
+ printf("*** readTransport from read with no filename\n");
   readTransport();
 }
 
@@ -531,6 +536,7 @@ printf("connection write with name %s\n", name.c_str());
     printf("set filename %s\n", write_connection_filename_.c_str());
     
   //if the path includes a directory that doesn't exist, make it before open
+    /*
     size_t position = 1;
     size_t found = write_connection_filename_.find_first_of("/", position);
     while (found != std::string::npos)
@@ -542,6 +548,7 @@ printf("connection write with name %s\n", name.c_str());
       printf("directory created at %s\n", openpath.c_str());
       found = write_connection_filename_.find_first_of("/", position);
     }
+    */
   }
   if (dropped_ || sending_header_error_)
   {
@@ -686,7 +693,12 @@ void Connection::onHeaderLengthRead(const ConnectionPtr& conn, const boost::shar
     conn->drop(HeaderError);
   }
 
+#if AMISHARE_ROS == 1
+printf("new read from file %s\n", read_connection_filename_.c_str());
+  read(len, read_connection_filename_, boost::bind(&Connection::onHeaderRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
   read(len, boost::bind(&Connection::onHeaderRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
 }
 
 void Connection::onHeaderRead(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)

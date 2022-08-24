@@ -237,7 +237,7 @@ void PollSet::handleAmiNotify(int events)
     {
       if (pathname == (*s)->getConnection()->getReadPathname())
       {
-        //(*s)->readMessage(events);
+        //(*s)->handleHeader();
       }
     }
   }

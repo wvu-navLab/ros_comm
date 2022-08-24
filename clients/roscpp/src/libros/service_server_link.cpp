@@ -121,6 +121,15 @@ bool ServiceServerLink::initialize(const ConnectionPtr& connection)
   connection_->addDropListener(boost::bind(&ServiceServerLink::onConnectionDropped, this, boost::placeholders::_1));
   connection_->setHeaderReceivedCallback(boost::bind(&ServiceServerLink::onHeaderReceived, this, boost::placeholders::_1, boost::placeholders::_2));
 
+#if AMISHARE_ROS == 1
+  std::string filename2 = "_server.txt";
+  server_link_name_ = AMISHARE_ROS_PATH + service_name_ + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddServerService(server_link_name_, ServiceServerLinkPtr(this));
+  filename2 = "_client.txt";
+  client_link_name_ = AMISHARE_ROS_PATH + service_name_ + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
+#endif
+
   M_string header;
   header["service"] = service_name_;
   header["md5sum"] = request_md5sum_;
@@ -349,13 +358,8 @@ printf("calling connection write with name %s\n", client_link_name_.c_str());
   }
 }
 
-#if AMISHARE_ROS == 1
-bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp, std::string name)
-#else
 bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp)
-#endif
 {
-printf("service server link call with name %s\n", name.c_str());
   CallInfoPtr info(boost::make_shared<CallInfo>());
   info->req_ = req;
   info->resp_ = &resp;
@@ -363,18 +367,6 @@ printf("service server link call with name %s\n", name.c_str());
   info->finished_ = false;
   info->call_finished_ = false;
   info->caller_thread_id_ = boost::this_thread::get_id();
-#if AMISHARE_ROS == 1
-  if (link_name_ != name)
-  {
-    link_name_ = name;
-    std::string filename2 = "_server.txt";
-    server_link_name_ = AMISHARE_ROS_PATH + name + filename2;
-    PollManager::instance()->getPollSet().aminotifyAddServerService(server_link_name_, ServiceServerLinkPtr(this));
-    filename2 = "_client.txt";
-    client_link_name_ = AMISHARE_ROS_PATH + name + filename2;
-    PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
-  }
-#endif
 
   //ros::WallDuration(0.1).sleep();
 
