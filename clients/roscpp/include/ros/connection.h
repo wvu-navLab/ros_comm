@@ -186,6 +186,10 @@ public:
   std::string getCallerId();
   std::string getRemoteString();
 
+#if AMISHARE_ROS == 1
+  std::string getServiceName() { return service_name_; }
+#endif
+
 private:
   /**
    * \brief Called by the Transport when there is data available to be read
@@ -285,6 +289,7 @@ private:
   std::string read_connection_filename_;
   std::string write_connection_filename_;
   int connection_file_fd_;
+  std::string service_name_;
 #endif
 };
 typedef boost::shared_ptr<Connection> ConnectionPtr;

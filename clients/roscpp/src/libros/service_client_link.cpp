@@ -75,6 +75,16 @@ bool ServiceClientLink::initialize(const ConnectionPtr& connection)
   connection_ = connection;
   dropped_conn_ = connection_->addDropListener(boost::bind(&ServiceClientLink::onConnectionDropped, this, boost::placeholders::_1));
 
+#if AMISHARE_ROS == 1
+  std::string service = connection_->getServiceName();
+  std::string filename2 = "_client.txt";
+  client_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
+  filename2 = "_server.txt";
+  server_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
+#endif
+
   return true;
 }
 
@@ -103,14 +113,6 @@ printf("service client link handle header\n");
       persistent_ = true;
     }
   }
-#if AMISHARE_ROS == 1
-  std::string filename2 = "_client.txt";
-  client_link_name_ = AMISHARE_ROS_PATH + service + filename2;
-  PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
-  filename2 = "_server.txt";
-  server_link_name_ = AMISHARE_ROS_PATH + service + filename2;
-  PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
-#endif
 
   ROSCPP_LOG_DEBUG("Service client [%s] wants service [%s] with md5sum [%s]", client_callerid.c_str(), service.c_str(), md5sum.c_str());
   ServicePublicationPtr ss = ServiceManager::instance()->lookupServicePublication(service);
@@ -198,7 +200,7 @@ printf("connection read with name %s\n", client_link_name_.c_str());
 
 void ServiceClientLink::onRequestLength(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
 {
-printf("service client link on requenst length\n");
+printf("service client link on request length\n");
   (void)size;
   if (!success)
     return;

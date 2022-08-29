@@ -237,7 +237,13 @@ void PollSet::handleAmiNotify(int events)
     {
       if (pathname == (*s)->getConnection()->getReadPathname())
       {
-        //(*s)->handleHeader();
+        boost::shared_ptr<M_string> m;
+        Header h;
+        m = h.getValues();
+        (*m)["md5sum"] = "";
+        (*m)["service"] = "";
+        (*m)["callerid"] = this_node::getName();
+        (*s)->handleHeader(h);
       }
     }
   }

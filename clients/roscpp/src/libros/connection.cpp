@@ -64,8 +64,10 @@ Connection::Connection()
 , sending_header_error_(false)
 {
 #if AMISHARE_ROS == 1
-  read_connection_filename_ = "";
-  write_connection_filename_ = "";
+  std::string filename = "/read_connection.txt";
+  read_connection_filename_ = AMISHARE_ROS_PATH + filename;
+  filename = "/write_connection.txt";
+  write_connection_filename_ = AMISHARE_ROS_PATH + filename;
 #endif
 }
 
@@ -90,7 +92,11 @@ void Connection::initialize(const TransportPtr& transport, bool is_server, const
 
   if (header_func)
   {
+#if AMISHARE_ROS == 1
+    read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
     read(4, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
   }
 }
 
@@ -145,7 +151,7 @@ printf("connection readTransport with name %s\n", name.c_str());
     uint32_t to_read = read_size_ - read_filled_;
     if (to_read > 0)
     {
-      connection_file_fd_ = open(read_connection_filename_.c_str(), O_RDONLY, 0666);
+      connection_file_fd_ = open(read_connection_filename_.c_str(), O_RDONLY | O_CREAT, 0666);
 printf("tried to open file to read %s\n", read_connection_filename_.c_str());
       int32_t bytes_read = ::read(connection_file_fd_, read_buffer_.get() + read_filled_, to_read);
       if (bytes_read == -1) perror("read");
@@ -320,6 +326,10 @@ void Connection::writeTransport(std::string name)
 
   while (has_write_callback_ && can_write_more && !dropped_)
   {
+    if (name != write_connection_filename_)
+    {
+      write_connection_filename_ = name;
+    }
     uint32_t to_write = write_size_ - write_sent_;
     ROS_DEBUG_NAMED("superdebug", "Connection writing %d bytes", to_write);
     connection_file_fd_ = open(write_connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
@@ -460,6 +470,11 @@ printf("connection read with name %s\n", name.c_str());
   {
     read_connection_filename_ = name;
     printf("set filename %s\n", read_connection_filename_.c_str());
+    size_t start, end;
+    start = name.find_last_of("/", 0);
+    end = name.find_last_of(".", 0);
+    service_name_ = name.substr(start, end-start);
+    printf("***** service name %s\n", service_name_);
     
   //if the path includes a directory that doesn't exist, make it before open
     /*
@@ -661,7 +676,11 @@ void Connection::writeHeader(const M_string& key_vals, const WriteFinishedFunc& 
   memcpy(full_msg.get() + 4, buffer.get(), len);
   *((uint32_t*)full_msg.get()) = len;
 
+#if AMISHARE_ROS == 1
+  write(full_msg, msg_len, write_connection_filename_, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
+#else
   write(full_msg, msg_len, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
+#endif
 }
 
 void Connection::sendHeaderError(const std::string& error_msg)
@@ -753,7 +772,11 @@ void Connection::setHeaderReceivedCallback(const HeaderReceivedFunc& func)
   header_func_ = func;
 
   if (transport_->requiresHeader())
+#if AMISHARE_ROS == 1
+    read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#else
     read(4, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+#endif
 }
 
 std::string Connection::getCallerId()

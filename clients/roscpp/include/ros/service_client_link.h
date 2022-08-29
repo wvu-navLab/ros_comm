@@ -85,6 +85,7 @@ private:
   std::string client_link_name_;
   std::string server_link_name_;
   std::string link_name_;
+  std::string service_name_;
 #endif
 };
 typedef boost::shared_ptr<ServiceClientLink> ServiceClientLinkPtr;
