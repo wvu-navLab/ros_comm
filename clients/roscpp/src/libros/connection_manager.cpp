@@ -64,6 +64,7 @@ void ConnectionManager::start()
 
   // Bring up the TCP listener socket
   tcpserver_transport_ = boost::make_shared<TransportTCP>(&poll_manager_->getPollSet());
+printf("connection manager start: listen\n");
   if (!tcpserver_transport_->listen(network::getTCPROSPort(), 
 				    MAX_TCPROS_CONN_QUEUE, 
 				    boost::bind(&ConnectionManager::tcprosAcceptConnection, this, boost::placeholders::_1)))
@@ -184,6 +185,7 @@ void ConnectionManager::udprosIncomingConnection(const TransportUDPPtr& transpor
 
 void ConnectionManager::tcprosAcceptConnection(const TransportTCPPtr& transport)
 {
+printf("*** tcpros accept connection\n");
   std::string client_uri = transport->getClientURI();
   ROSCPP_LOG_DEBUG("TCPROS received a connection from [%s]", client_uri.c_str());
 
@@ -195,6 +197,7 @@ void ConnectionManager::tcprosAcceptConnection(const TransportTCPPtr& transport)
 
 bool ConnectionManager::onConnectionHeaderReceived(const ConnectionPtr& conn, const Header& header)
 {
+printf("** connection manager onConnectionHeaderReceived\n");
   bool ret = false;
   std::string val;
   if (header.getValue("topic", val))
@@ -212,7 +215,11 @@ bool ConnectionManager::onConnectionHeaderReceived(const ConnectionPtr& conn, co
 		     val.c_str(), conn->getRemoteString().c_str());
 
     ServiceClientLinkPtr link(boost::make_shared<ServiceClientLink>());
+#if AMISHARE_ROS == 1
+    link->initialize(conn, val);
+#else
     link->initialize(conn);
+#endif
     ret = link->handleHeader(header);
   }
   else

@@ -92,11 +92,11 @@ void Connection::initialize(const TransportPtr& transport, bool is_server, const
 
   if (header_func)
   {
-#if AMISHARE_ROS == 1
-    read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#else
+//#if AMISHARE_ROS == 1
+    //read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+//#else
     read(4, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#endif
+//#endif
   }
 }
 
@@ -117,6 +117,7 @@ void Connection::onReadable(const TransportPtr& transport)
   (void)transport;
   ROS_ASSERT(transport == transport_);
 
+/*
 #if AMISHARE_ROS == 1
   if (read_connection_filename_ != "")
   {
@@ -128,8 +129,9 @@ void Connection::onReadable(const TransportPtr& transport)
     readTransport();
   }
 #else
+*/
   readTransport();
-#endif
+//#endif
 }
 
 #if AMISHARE_ROS == 1
@@ -471,10 +473,11 @@ printf("connection read with name %s\n", name.c_str());
     read_connection_filename_ = name;
     printf("set filename %s\n", read_connection_filename_.c_str());
     size_t start, end;
-    start = name.find_last_of("/", 0);
-    end = name.find_last_of(".", 0);
+    start = name.find_last_of("/");
+    end = name.find_last_of(".");
     service_name_ = name.substr(start, end-start);
-    printf("***** service name %s\n", service_name_);
+    printf("name positions %d %d\n", start, end);
+    printf("***** service name %s\n", service_name_.c_str());
     
   //if the path includes a directory that doesn't exist, make it before open
     /*
@@ -676,11 +679,11 @@ void Connection::writeHeader(const M_string& key_vals, const WriteFinishedFunc& 
   memcpy(full_msg.get() + 4, buffer.get(), len);
   *((uint32_t*)full_msg.get()) = len;
 
-#if AMISHARE_ROS == 1
-  write(full_msg, msg_len, write_connection_filename_, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
-#else
+//#if AMISHARE_ROS == 1
+  //write(full_msg, msg_len, write_connection_filename_, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
+//#else
   write(full_msg, msg_len, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
-#endif
+//#endif
 }
 
 void Connection::sendHeaderError(const std::string& error_msg)
@@ -712,12 +715,12 @@ void Connection::onHeaderLengthRead(const ConnectionPtr& conn, const boost::shar
     conn->drop(HeaderError);
   }
 
-#if AMISHARE_ROS == 1
-printf("new read from file %s\n", read_connection_filename_.c_str());
-  read(len, read_connection_filename_, boost::bind(&Connection::onHeaderRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#else
+//#if AMISHARE_ROS == 1
+//printf("new read from file %s\n", read_connection_filename_.c_str());
+  //read(len, read_connection_filename_, boost::bind(&Connection::onHeaderRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+//#else
   read(len, boost::bind(&Connection::onHeaderRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#endif
+//#endif
 }
 
 void Connection::onHeaderRead(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
@@ -772,11 +775,11 @@ void Connection::setHeaderReceivedCallback(const HeaderReceivedFunc& func)
   header_func_ = func;
 
   if (transport_->requiresHeader())
-#if AMISHARE_ROS == 1
-    read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#else
+//#if AMISHARE_ROS == 1
+    //read(4, read_connection_filename_, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+//#else
     read(4, boost::bind(&Connection::onHeaderLengthRead, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
-#endif
+//#endif
 }
 
 std::string Connection::getCallerId()
