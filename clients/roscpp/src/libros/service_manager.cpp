@@ -267,6 +267,7 @@ ServiceServerLinkPtr ServiceManager::createServiceServerLink(const std::string& 
     }
 
     client->initialize(connection);
+    printf("service server link initialized\n");
 
     return client;
   }

@@ -70,18 +70,21 @@ ServiceClientLink::~ServiceClientLink()
   }
 }
 
+#if AMISHARE_ROS == 1
+bool ServiceClientLink::initialize(const ConnectionPtr& connection, std::string service_name)
+#else
 bool ServiceClientLink::initialize(const ConnectionPtr& connection)
+#endif
 {
   connection_ = connection;
   dropped_conn_ = connection_->addDropListener(boost::bind(&ServiceClientLink::onConnectionDropped, this, boost::placeholders::_1));
 
 #if AMISHARE_ROS == 1
-  std::string service = connection_->getServiceName();
   std::string filename2 = "_client.txt";
-  client_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  client_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
   filename2 = "_server.txt";
-  server_link_name_ = AMISHARE_ROS_PATH + service + filename2;
+  server_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
 #endif
 

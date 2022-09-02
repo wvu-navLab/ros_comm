@@ -56,7 +56,11 @@ public:
   virtual ~ServiceClientLink();
 
   //
+#if AMISHARE_ROS == 1
+  bool initialize(const ConnectionPtr& connection, std::string service);
+#else
   bool initialize(const ConnectionPtr& connection);
+#endif
   bool handleHeader(const Header& header);
 
   /**

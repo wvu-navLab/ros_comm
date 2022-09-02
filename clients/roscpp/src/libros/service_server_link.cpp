@@ -117,6 +117,7 @@ void ServiceServerLink::clearCalls()
 
 bool ServiceServerLink::initialize(const ConnectionPtr& connection)
 {
+printf("service server link initialize\n");
   connection_ = connection;
   connection_->addDropListener(boost::bind(&ServiceServerLink::onConnectionDropped, this, boost::placeholders::_1));
   connection_->setHeaderReceivedCallback(boost::bind(&ServiceServerLink::onHeaderReceived, this, boost::placeholders::_1, boost::placeholders::_2));
