@@ -356,6 +356,7 @@ Subscriber NodeHandle::subscribe(SubscribeOptions& ops)
 
 ServiceServer NodeHandle::advertiseService(AdvertiseServiceOptions& ops)
 {
+printf("node handle advertise service\n");
   ops.service = resolveName(ops.service);
   if (ops.callback_queue == 0)
   {

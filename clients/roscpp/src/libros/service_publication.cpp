@@ -62,6 +62,12 @@ ServicePublication::ServicePublication(const std::string& name, const std::strin
   {
     has_tracked_object_ = true;
   }
+printf("service publication with name %s\n", name_.c_str());
+#if AMISHARE_ROS == 1
+  ServiceClientLinkPtr link(boost::make_shared<ServiceClientLink>());
+  link->initialize(name_);
+#endif
+printf("initialized link from service publication\n");
 }
 
 ServicePublication::~ServicePublication()
@@ -163,8 +169,12 @@ void ServicePublication::processRequest(boost::shared_array<uint8_t> buf, size_t
 
 void ServicePublication::addServiceClientLink(const ServiceClientLinkPtr& link)
 {
+printf("service publication add service client link with name %s\n", name_.c_str());
   boost::mutex::scoped_lock lock(client_links_mutex_);
 
+#if AMISHARE_ROS == 1
+  link->initialize(name_);
+#endif
   client_links_.push_back(link);
 }
 

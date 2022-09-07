@@ -145,11 +145,14 @@ printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
+  /*
   size_t start, end;
   start = pathname.find_last_of("/");
   end = pathname.find_last_of("_");
   service_name_ = pathname.substr(start, end-start);
+printf("initialize service client link with name %s\n", service_name_.c_str());
   ser->initialize(service_name_);
+  */
   client_links_.push_back(ser);
 }
 

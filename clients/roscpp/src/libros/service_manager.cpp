@@ -122,7 +122,8 @@ void ServiceManager::shutdown()
 }
 
 bool ServiceManager::advertiseService(const AdvertiseServiceOptions& ops)
-{
+{ 
+printf("service manager advertise service\n");
   boost::recursive_mutex::scoped_lock shutdown_lock(shutting_down_mutex_);
   if (shutting_down_)
   {

@@ -53,6 +53,7 @@ namespace ros
 ServiceClientLink::ServiceClientLink()
 : persistent_(false)
 {
+printf("service client link\n");
 }
 
 ServiceClientLink::~ServiceClientLink()
