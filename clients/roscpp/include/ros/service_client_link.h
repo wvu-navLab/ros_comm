@@ -57,7 +57,7 @@ public:
 
   //
 #if AMISHARE_ROS == 1
-  bool initialize(const ConnectionPtr& connection, std::string service);
+  bool initialize(std::string service);
 #else
   bool initialize(const ConnectionPtr& connection);
 #endif

@@ -71,21 +71,21 @@ ServiceClientLink::~ServiceClientLink()
 }
 
 #if AMISHARE_ROS == 1
-bool ServiceClientLink::initialize(const ConnectionPtr& connection, std::string service_name)
+bool ServiceClientLink::initialize(std::string service_name)
 #else
 bool ServiceClientLink::initialize(const ConnectionPtr& connection)
 #endif
 {
-  connection_ = connection;
-  dropped_conn_ = connection_->addDropListener(boost::bind(&ServiceClientLink::onConnectionDropped, this, boost::placeholders::_1));
-
 #if AMISHARE_ROS == 1
   std::string filename2 = "_client.txt";
   client_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
   filename2 = "_server.txt";
   server_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
-  PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
+  //PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
+#else
+  connection_ = connection;
+  dropped_conn_ = connection_->addDropListener(boost::bind(&ServiceClientLink::onConnectionDropped, this, boost::placeholders::_1));
 #endif
 
   return true;
@@ -130,6 +130,7 @@ printf("service client link handle header\n");
 
     return false;
   }
+#if AMISHARE_ROS != 1
   if (ss->getMD5Sum() != md5sum &&
       (md5sum != std::string("*") && ss->getMD5Sum() != std::string("*")))
   {
@@ -143,6 +144,7 @@ printf("service client link handle header\n");
 
     return false;
   }
+#endif
 
   // Check whether the service (ss here) has been deleted from
   // advertised_topics through a call to unadvertise(), which could

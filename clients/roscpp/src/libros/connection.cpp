@@ -472,12 +472,6 @@ printf("connection read with name %s\n", name.c_str());
   {
     read_connection_filename_ = name;
     printf("set filename %s\n", read_connection_filename_.c_str());
-    size_t start, end;
-    start = name.find_last_of("/");
-    end = name.find_last_of(".");
-    service_name_ = name.substr(start, end-start);
-    printf("name positions %d %d\n", start, end);
-    printf("***** service name %s\n", service_name_.c_str());
     
   //if the path includes a directory that doesn't exist, make it before open
     /*

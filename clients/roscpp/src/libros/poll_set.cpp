@@ -145,6 +145,11 @@ printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
+  size_t start, end;
+  start = pathname.find_last_of("/");
+  end = pathname.find_last_of("_");
+  service_name_ = pathname.substr(start, end-start);
+  ser->initialize(service_name_);
   client_links_.push_back(ser);
 }
 
@@ -207,6 +212,13 @@ void PollSet::handleAmiNotify(int events)
     if (len <= 0) return;
     pathname = buf;
 
+    size_t start, end;
+    start = pathname.find_last_of("/");
+    end = pathname.find_last_of("_");
+    service_name_ = pathname.substr(start, end-start);
+    printf("name positions %d %d\n", start, end);
+    printf("***** service name %s\n", service_name_.c_str());
+
     struct stat path_stat;
     lstat(pathname.c_str(), &path_stat);
     double read_mtime = path_stat.st_mtim.tv_sec + (double)path_stat.st_mtim.tv_nsec/1000000000.0;
@@ -219,6 +231,7 @@ void PollSet::handleAmiNotify(int events)
       if (repeat) len = read(aminotify_fd_, &opcode, 1);
       continue;
     }
+printf(" handle aminotify for path %s\n", pathname.c_str());
     for (L_Subscription::iterator s = subscriptions_.begin(); s != subscriptions_.end(); ++s)
     {
       if (pathname == (*s)->getPathname())
@@ -241,7 +254,7 @@ void PollSet::handleAmiNotify(int events)
         Header h;
         m = h.getValues();
         (*m)["md5sum"] = "";
-        (*m)["service"] = "";
+        (*m)["service"] = service_name_.c_str();
         (*m)["callerid"] = this_node::getName();
         (*s)->handleHeader(h);
       }

@@ -216,7 +216,7 @@ printf("** connection manager onConnectionHeaderReceived\n");
 
     ServiceClientLinkPtr link(boost::make_shared<ServiceClientLink>());
 #if AMISHARE_ROS == 1
-    link->initialize(conn, val);
+    link->initialize(val);
 #else
     link->initialize(conn);
 #endif

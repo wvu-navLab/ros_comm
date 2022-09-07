@@ -128,7 +128,7 @@ printf("service server link initialize\n");
   PollManager::instance()->getPollSet().aminotifyAddServerService(server_link_name_, ServiceServerLinkPtr(this));
   filename2 = "_client.txt";
   client_link_name_ = AMISHARE_ROS_PATH + service_name_ + filename2;
-  PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
+  //PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
 #endif
 
   M_string header;
@@ -199,7 +199,7 @@ void ServiceServerLink::onRequestWritten(const ConnectionPtr& conn)
   (void)conn;
   //ros::WallDuration(0.1).sleep();
 #if AMISHARE_ROS == 1
-printf("connection read with name %s\n", server_link_name_.c_str());
+printf(" ** on request written ** connection read with name %s\n", server_link_name_.c_str());
   connection_->read(5, server_link_name_, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
 #else
   connection_->read(5, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
@@ -382,7 +382,6 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
 
     boost::mutex::scoped_lock lock(call_queue_mutex_);
 
-printf("immediate %d header_written_ %d header_read_ %d\n", immediate, header_written_, header_read_);
     if (call_queue_.empty() && header_written_ && header_read_)
     {
       immediate = true;

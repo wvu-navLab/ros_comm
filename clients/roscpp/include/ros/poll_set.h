@@ -165,6 +165,7 @@ private:
 
 #if AMISHARE_ROS == 1
   int aminotify_fd_;
+  std::string service_name_;
   L_Subscription subscriptions_;
   L_ServiceServerLink server_links_;
   L_ServiceClientLink client_links_;
