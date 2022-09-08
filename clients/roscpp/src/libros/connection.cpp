@@ -562,30 +562,7 @@ printf("connection write with name %s\n", name.c_str());
     }
     */
   }
-  if (dropped_ || sending_header_error_)
-  {
-    return;
-  }
-
-  {
-    boost::mutex::scoped_lock lock(write_callback_mutex_);
-
-    ROS_ASSERT(!write_callback_);
-
-    write_callback_ = callback;
-    write_buffer_ = buffer;
-    write_size_ = size;
-    write_sent_ = 0;
-    has_write_callback_ = 1;
-  }
-
-  transport_->enableWrite();
-
-  if (immediate)
-  {
-    // write immediately if possible
-    writeTransport(name);
-  }
+  writeTransport(name);
 }
 #endif
 void Connection::write(const boost::shared_array<uint8_t>& buffer, uint32_t size, const WriteFinishedFunc& callback, bool immediate)

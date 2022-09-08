@@ -361,6 +361,7 @@ printf("calling connection write with name %s\n", client_link_name_.c_str());
 
 bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& resp)
 {
+printf("service server link call\n");
   CallInfoPtr info(boost::make_shared<CallInfo>());
   info->req_ = req;
   info->resp_ = &resp;
@@ -371,6 +372,11 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
 
   //ros::WallDuration(0.1).sleep();
 
+#if AMISHARE_ROS == 1
+  call_queue_.push(info);
+  processNextCall();
+  info->call_finished_ = true;
+#else
   bool immediate = false;
   {
     if (connection_->isDropped())
@@ -410,6 +416,7 @@ bool ServiceServerLink::call(const SerializedMessage& req, SerializedMessage& re
   {
     ROS_ERROR("Service call failed: service [%s] responded with an error: %s", service_name_.c_str(), info->exception_string_.c_str());
   }
+#endif
 
   return info->success_;
 }
