@@ -71,6 +71,9 @@ public:
   void processResponse(bool ok, const SerializedMessage& res);
 
   const ConnectionPtr& getConnection() { return connection_; }
+#if AMISHARE_ROS == 1
+  std::string getServiceName() { return service_name_; }
+#endif
 
 private:
   void onConnectionDropped(const ConnectionPtr& conn);

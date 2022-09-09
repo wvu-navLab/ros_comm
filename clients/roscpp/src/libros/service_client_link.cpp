@@ -78,6 +78,8 @@ bool ServiceClientLink::initialize(const ConnectionPtr& connection)
 #endif
 {
 #if AMISHARE_ROS == 1
+  service_name_ = service_name;
+printf("service client link set service name to %s\n", service_name_.c_str());
   std::string filename2 = "_client.txt";
   client_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));

@@ -154,6 +154,8 @@ printf("initialize service client link with name %s\n", service_name_.c_str());
   ser->initialize(service_name_);
   */
   client_links_.push_back(ser);
+  client_link_names_.push_back(ser->getServiceName());
+printf("poll set: added service client link with name %s\n", ser->getServiceName().c_str());
 }
 
 void PollSet::aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub)
@@ -249,9 +251,11 @@ printf(" handle aminotify for path %s\n", pathname.c_str());
         (*s)->processNextCall();
       }
     }
-    for (L_ServiceClientLink::iterator s = client_links_.begin(); s != client_links_.end(); ++s)
+    //for (L_ServiceClientLink::iterator s = client_links_.begin(); s != client_links_.end(); ++s)
+    for (int i = 0; i < client_link_names_.size(); i++)
     {
-      if (pathname == (*s)->getConnection()->getReadPathname())
+  printf("server pathname %s\n", client_link_names_[i].c_str());
+      if (pathname == client_link_names_[i])
       {
         boost::shared_ptr<M_string> m;
         Header h;
@@ -259,7 +263,7 @@ printf(" handle aminotify for path %s\n", pathname.c_str());
         (*m)["md5sum"] = "";
         (*m)["service"] = service_name_.c_str();
         (*m)["callerid"] = this_node::getName();
-        (*s)->handleHeader(h);
+        client_links_[i]->handleHeader(h);
       }
     }
   }

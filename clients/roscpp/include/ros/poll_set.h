@@ -53,7 +53,7 @@ class Transport;
 typedef boost::shared_ptr<Transport> TransportPtr;
 
 #if AMISHARE_ROS == 1
-typedef std::list<ServiceClientLinkPtr> L_ServiceClientLink;
+typedef std::vector<ServiceClientLinkPtr> L_ServiceClientLink;
 #endif
 
 /**
@@ -169,6 +169,7 @@ private:
   L_Subscription subscriptions_;
   L_ServiceServerLink server_links_;
   L_ServiceClientLink client_links_;
+  std::vector<std::string> client_link_names_;
   boost::mutex subscriptions_mutex_;
   struct _AmiNotifyMessage
   {
