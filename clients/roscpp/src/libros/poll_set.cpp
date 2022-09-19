@@ -154,7 +154,9 @@ printf("initialize service client link with name %s\n", service_name_.c_str());
   ser->initialize(service_name_);
   */
   client_links_.push_back(ser);
-  client_link_names_.push_back(ser->getServiceName());
+  std::string name1 = "_client.txt";
+  std::string client_link_name = AMISHARE_ROS_PATH + ser->getServiceName() + name1;
+  client_link_names_.push_back(client_link_name);
 printf("poll set: added service client link with name %s\n", ser->getServiceName().c_str());
 }
 
@@ -254,7 +256,7 @@ printf(" handle aminotify for path %s\n", pathname.c_str());
     //for (L_ServiceClientLink::iterator s = client_links_.begin(); s != client_links_.end(); ++s)
     for (int i = 0; i < client_link_names_.size(); i++)
     {
-  printf("server pathname %s\n", client_link_names_[i].c_str());
+  printf("server pathname %s pathname %s\n", client_link_names_[i].c_str(), pathname.c_str());
       if (pathname == client_link_names_[i])
       {
         boost::shared_ptr<M_string> m;

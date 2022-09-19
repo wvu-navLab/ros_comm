@@ -196,6 +196,7 @@ void ServiceServerLink::onConnectionDropped(const ConnectionPtr& conn)
 
 void ServiceServerLink::onRequestWritten(const ConnectionPtr& conn)
 {
+printf("service server link on request written\n");
   (void)conn;
   //ros::WallDuration(0.1).sleep();
 #if AMISHARE_ROS == 1
@@ -208,6 +209,7 @@ printf(" ** on request written ** connection read with name %s\n", server_link_n
 
 void ServiceServerLink::onResponseOkAndLength(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
 {
+printf("service server link on response ok and length\n");
   (void)size;
   ROS_ASSERT(conn == connection_);
   ROS_ASSERT(size == 5);
@@ -255,6 +257,7 @@ printf("connection read with name %s\n", server_link_name_.c_str());
 
 void ServiceServerLink::onResponse(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
 {
+printf("service server link on response\n");
   (void)conn;
   ROS_ASSERT(conn == connection_);
 
@@ -279,6 +282,7 @@ void ServiceServerLink::onResponse(const ConnectionPtr& conn, const boost::share
 
 void ServiceServerLink::callFinished()
 {
+printf("service server link call finished\n");
   CallInfoPtr saved_call;
   ServiceServerLinkPtr self;
   {
@@ -375,7 +379,18 @@ printf("service server link call\n");
 #if AMISHARE_ROS == 1
   call_queue_.push(info);
   processNextCall();
-  info->call_finished_ = true;
+  info->success_ = true;
+  /*
+  {
+    boost::mutex::scoped_lock lock(info->finished_mutex_);
+
+    while (!info->finished_)
+    {
+      info->finished_condition_.wait(lock);
+    }
+  }
+  */
+  //info->call_finished_ = true;
 #else
   bool immediate = false;
   {
