@@ -562,6 +562,11 @@ printf("connection write with name %s\n", name.c_str());
     }
     */
   }
+  write_callback_ = callback;
+  write_buffer_ = buffer;
+  write_size_ = size;
+  write_sent_ = 0;
+  has_write_callback_ = 1;
   writeTransport(name);
 }
 #endif

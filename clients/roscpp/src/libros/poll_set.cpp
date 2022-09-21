@@ -105,6 +105,7 @@ printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;
     int ret = write(aminotify_fd_, buf, i);
+    if (ret == -1) perror("write");
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
@@ -142,6 +143,7 @@ printf("Sending opcode 3 to aminotify for %s\n", pathname.c_str());
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;
     int ret = write(aminotify_fd_, buf, i);
+    if (ret == -1) perror("write");
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
@@ -190,6 +192,7 @@ void PollSet::aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub
     int i = tmp_pathname.length() + 3;
     buf[i] = 0;
     int ret = write(aminotify_fd_, buf, i);
+    if (ret == -1) perror("write");
   }
 
   boost::mutex::scoped_lock lock(subscriptions_mutex_);
@@ -254,7 +257,7 @@ printf(" handle aminotify for path %s\n", pathname.c_str());
       }
     }
     //for (L_ServiceClientLink::iterator s = client_links_.begin(); s != client_links_.end(); ++s)
-    for (int i = 0; i < client_link_names_.size(); i++)
+    for (size_t i = 0; i < client_link_names_.size(); i++)
     {
   printf("server pathname %s pathname %s\n", client_link_names_[i].c_str(), pathname.c_str());
       if (pathname == client_link_names_[i])
