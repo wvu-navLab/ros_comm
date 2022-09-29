@@ -200,8 +200,8 @@ printf("service server link on request written\n");
   (void)conn;
   //ros::WallDuration(0.1).sleep();
 #if AMISHARE_ROS == 1
-printf(" ** on request written ** connection read with name %s\n", server_link_name_.c_str());
-  connection_->read(5, server_link_name_, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
+//printf(" ** on request written ** connection read with name %s\n", server_link_name_.c_str());
+  //connection_->read(5, server_link_name_, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
 #else
   connection_->read(5, boost::bind(&ServiceServerLink::onResponseOkAndLength, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4));
 #endif

@@ -497,6 +497,7 @@ printf("connection read with name %s\n", name.c_str());
   {
     boost::recursive_mutex::scoped_lock lock(read_mutex_);
 
+    read_callback_.clear();
     ROS_ASSERT(!read_callback_);
 
     read_callback_ = callback;
@@ -522,6 +523,7 @@ void Connection::read(uint32_t size, const ReadFinishedFunc& callback)
   {
     boost::recursive_mutex::scoped_lock lock(read_mutex_);
 
+    read_callback_.clear();
     ROS_ASSERT(!read_callback_);
 
     read_callback_ = callback;
@@ -637,6 +639,7 @@ bool Connection::isDropped()
 
 void Connection::writeHeader(const M_string& key_vals, const WriteFinishedFunc& finished_callback)
 {
+printf("connection write header\n");
   ROS_ASSERT(!header_written_callback_);
   header_written_callback_ = finished_callback;
 
@@ -658,6 +661,7 @@ void Connection::writeHeader(const M_string& key_vals, const WriteFinishedFunc& 
 //#if AMISHARE_ROS == 1
   //write(full_msg, msg_len, write_connection_filename_, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
 //#else
+  printf("writing message\n");
   write(full_msg, msg_len, boost::bind(&Connection::onHeaderWritten, this, boost::placeholders::_1), false);
 //#endif
 }

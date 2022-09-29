@@ -110,6 +110,7 @@ printf("service client link handle header\n");
 
     return false;
   }
+  printf("1. read header values %s %s\n", service.c_str(), client_callerid.c_str());
 
   std::string persistent;
   if (header.getValue("persistent", persistent))
@@ -119,6 +120,7 @@ printf("service client link handle header\n");
       persistent_ = true;
     }
   }
+  printf("2. read persistence from header\n");
 
   ROSCPP_LOG_DEBUG("Service client [%s] wants service [%s] with md5sum [%s]", client_callerid.c_str(), service.c_str(), md5sum.c_str());
   ServicePublicationPtr ss = ServiceManager::instance()->lookupServicePublication(service);
@@ -133,6 +135,7 @@ printf("service client link handle header\n");
 
     return false;
   }
+  printf("3. looked up service name\n");
 #if AMISHARE_ROS != 1
   if (ss->getMD5Sum() != md5sum &&
       (md5sum != std::string("*") && ss->getMD5Sum() != std::string("*")))
@@ -153,6 +156,7 @@ printf("service client link handle header\n");
   // advertised_topics through a call to unadvertise(), which could
   // have happened while we were waiting for the subscriber to
   // provide the md5sum.
+  printf("ss->isDropped %d\n", ss->isDropped());
   if(ss->isDropped())
   {
     std::string msg = std::string("received a tcpros connection for a "
@@ -166,7 +170,9 @@ printf("service client link handle header\n");
   }
   else
   {
+  printf("4. sending response\n");
     parent_ = ServicePublicationWPtr(ss);
+    printf("got service publication pointer?\n");
 
     // Send back a success, with info
     M_string m;
@@ -175,9 +181,11 @@ printf("service client link handle header\n");
     m["type"] = ss->getDataType();
     m["md5sum"] = ss->getMD5Sum();
     m["callerid"] = this_node::getName();
+    printf("got header values?\n");
     connection_->writeHeader(m, boost::bind(&ServiceClientLink::onHeaderWritten, this, boost::placeholders::_1));
 
     ss->addServiceClientLink(shared_from_this());
+  printf("5. response sent\n");
   }
 
   return true;
