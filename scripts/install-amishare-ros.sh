@@ -2,6 +2,8 @@
 
 source user-variables.sh
 
+echo "export PATH=$PATH:$SCRIPT_PATH" >> ~/.bashrc
+
 mkdir $FORK_BASE
 cd $FORK_BASE
 git clone git@github.com:wvu-navLab/ros_comm.git

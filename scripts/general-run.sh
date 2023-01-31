@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source user-variables.sh
+source $SCRIPT_PATH/user-variables.sh
 source $ROS_BASE/devel/setup.bash
 
 #export CATKIN_PATH=~/catkin_ws
