@@ -64,9 +64,9 @@ Connection::Connection()
 , sending_header_error_(false)
 {
 #if AMISHARE_ROS == 1
-  std::string filename = "/read_connection.txt";
+  std::string filename = "/read_connection";
   read_connection_filename_ = AMISHARE_ROS_PATH + filename;
-  filename = "/write_connection.txt";
+  filename = "/write_connection";
   write_connection_filename_ = AMISHARE_ROS_PATH + filename;
 #endif
 }
@@ -151,7 +151,7 @@ printf("connection readTransport with name %s\n", name.c_str());
     uint32_t to_read = read_size_ - read_filled_;
     if (to_read > 0)
     {
-      connection_file_fd_ = open(read_connection_filename_.c_str(), O_RDONLY | O_CREAT, 0666);
+      connection_file_fd_ = open(read_connection_filename_.c_str(), O_RDONLY);
 printf("tried to open file to read %s\n", read_connection_filename_.c_str());
       int32_t bytes_read = ::read(connection_file_fd_, read_buffer_.get() + read_filled_, to_read);
       if (bytes_read == -1) perror("read");
@@ -332,15 +332,16 @@ void Connection::writeTransport(std::string name)
     }
     uint32_t to_write = write_size_ - write_sent_;
     ROS_DEBUG_NAMED("superdebug", "Connection writing %d bytes", to_write);
-    connection_file_fd_ = open(write_connection_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
+    mkfifo(write_connection_filename_.c_str(), 0666);
+    connection_file_fd_ = open(write_connection_filename_.c_str(), O_WRONLY | O_CREAT);
  printf("open file for writing %s\n", write_connection_filename_.c_str());
  printf("write_sent_ %d, to_write %d\n", write_sent_, to_write);
  printf("write buffer [%s]\n", write_buffer_.get());
     int ret;
     ret = ::write(connection_file_fd_, write_buffer_.get() + write_sent_, to_write);
     if (ret == -1) perror("write");
-    ret = ::write(connection_file_fd_, "\n", sizeof(char));
-    if (ret == -1) perror("write");
+    //ret = ::write(connection_file_fd_, "\n", sizeof(char));
+    //if (ret == -1) perror("write");
     close(connection_file_fd_);
     int32_t bytes_sent = to_write;
     ROS_DEBUG_NAMED("superdebug", "Connection wrote %d bytes", bytes_sent);

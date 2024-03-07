@@ -80,10 +80,10 @@ bool ServiceClientLink::initialize(const ConnectionPtr& connection)
   dropped_conn_ = connection_->addDropListener(boost::bind(&ServiceClientLink::onConnectionDropped, this, boost::placeholders::_1));
 
 #if AMISHARE_ROS == 1
-  std::string filename2 = "_client.txt";
+  std::string filename2 = "_client";
   client_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(client_link_name_, ServiceClientLinkPtr(this));
-  filename2 = "_server.txt";
+  filename2 = "_server";
   server_link_name_ = AMISHARE_ROS_PATH + service_name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddClientService(server_link_name_, ServiceClientLinkPtr(this));
 #endif

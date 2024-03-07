@@ -123,10 +123,10 @@ printf("service server link initialize\n");
   connection_->setHeaderReceivedCallback(boost::bind(&ServiceServerLink::onHeaderReceived, this, boost::placeholders::_1, boost::placeholders::_2));
 
 #if AMISHARE_ROS == 1
-  std::string filename2 = "_server.txt";
+  std::string filename2 = "_server";
   server_link_name_ = AMISHARE_ROS_PATH + service_name_ + filename2;
   PollManager::instance()->getPollSet().aminotifyAddServerService(server_link_name_, ServiceServerLinkPtr(this));
-  filename2 = "_client.txt";
+  filename2 = "_client";
   client_link_name_ = AMISHARE_ROS_PATH + service_name_ + filename2;
   PollManager::instance()->getPollSet().aminotifyAddServerService(client_link_name_, ServiceServerLinkPtr(this));
 #endif

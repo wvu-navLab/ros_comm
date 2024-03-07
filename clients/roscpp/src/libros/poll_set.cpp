@@ -74,6 +74,14 @@ PollSet::~PollSet()
 }
 
 #if AMISHARE_ROS == 1
+void PollSet::aminotifyAddServerService(int fd, const ServiceServerLinkPtr &ser)
+{
+  addSocket(fd, boost::bind(&PollSet::handlePipe, this, boost::placeholders::_1));
+  addEvents(fd, POLLIN);
+  boost::mutex::scoped_lock lock(subscriptions_mutex_);
+  server_links_.push_back(ser);
+}
+
 void PollSet::aminotifyAddServerService(std::string pathname, const ServiceServerLinkPtr &ser)
 {
   std::string node_name = FIFO_PATH;
@@ -184,6 +192,9 @@ void PollSet::aminotifyAddWatch(std::string pathname, const SubscriptionPtr &sub
   subscriptions_.push_back(sub);
 }
 
+void PollSet::handlePipe(int events)
+{
+}
 void PollSet::handleAmiNotify(int events)
 {
   boost::mutex::scoped_lock lock(subscriptions_mutex_);

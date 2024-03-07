@@ -139,7 +139,7 @@ bool ServiceClient::call(const SerializedMessage& req, SerializedMessage& resp, 
       return false;
     }
   }
-
+printf("service client call\n");
   bool ret = link->call(req, resp);
   link.reset();
 
