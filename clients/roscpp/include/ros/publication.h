@@ -40,6 +40,8 @@
 
 #include <vector>
 
+#include "BoxTSTObjectCreate.h"
+
 namespace ros
 {
 
@@ -168,9 +170,12 @@ private:
 
 #if AMISHARE_ROS == 1
   std::string publication_filename_;
+  std::string amishare_filename_;
   int publication_file_fd_;
   boost::mutex publication_file_mutex_;
   bool global_topic_;
+
+  void** m_poObjectCreate;
 #endif
 
   typedef std::vector<SubscriberCallbacksPtr> V_Callback;

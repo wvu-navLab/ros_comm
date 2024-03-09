@@ -41,6 +41,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
+#include "BoxTSTObjectCreate.h"
+
 namespace ros
 {
 
@@ -223,7 +225,9 @@ private:
   uint32_t nonconst_callbacks_;
 
 #if AMISHARE_ROS == 1
+  void ** m_poObjectCreate;
   std::string subscription_filename_;
+  std::string amishare_filename_;
   int subscription_file_fd_;
   boost::shared_array<uint8_t> message_read_buffer_;
   boost::mutex subscription_file_mutex_;

@@ -126,6 +126,18 @@ Publication::Publication(const std::string &name,
       mkdir(openpath.c_str(), 0775);
       found = name.find_first_of("/", position);
     }
+
+    amishare_filename_ = name + filename2;
+    m_poObjectCreate = new void*;
+    *m_poObjectCreate = NULL;
+    object_create_init(m_poObjectCreate);
+    const char** args;
+    args = new const char*[2];
+    args[0] = amishare_filename_.c_str();
+    std::string message = " ";
+    args[1] = message.c_str();
+    object_create(m_poObjectCreate, 2, args);
+    delete[] args;
   }
 #endif
 }
@@ -494,13 +506,24 @@ void Publication::publish(SerializedMessage& m)
     if (m.buf)
     {
       boost::mutex::scoped_lock lock(publication_file_mutex_);
-      //publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_TRUNC | O_APPEND, 0666);
+      /*
       publication_file_fd_ = open(publication_filename_.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0666);
   
       write(publication_file_fd_, m.buf.get(), m.num_bytes);
       write(publication_file_fd_, "\n", sizeof(char));
   
       close(publication_file_fd_);
+      */
+      const char** args;
+      args = new const char*[3];
+      args[0] = amishare_filename_.c_str();
+      std::string message(reinterpret_cast<char const*>(m.buf.get()), m.num_bytes);
+      args[1] = message.c_str();
+      std::string length = std::to_string(m.num_bytes);
+      args[2] = length.c_str();
+      std::cout << "TEBD: writing " << message << " length " << m.num_bytes << "\n";
+      object_update(m_poObjectCreate, 3, args);
+      delete[] args;
     }
   }
   else

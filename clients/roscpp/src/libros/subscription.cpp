@@ -109,6 +109,11 @@ Subscription::Subscription(const std::string &name, const std::string& md5sum, c
   std::string filename2 = ".txt";
   subscription_filename_ = AMISHARE_ROS_PATH + name + filename2;
   PollManager::instance()->getPollSet().aminotifyAddWatch(subscription_filename_, SubscriptionPtr(this));
+
+  amishare_filename_ = name + filename2;
+  m_poObjectCreate = new void*;
+  *m_poObjectCreate = NULL;
+  object_create_init(m_poObjectCreate);
 #endif
 }
 
@@ -504,6 +509,16 @@ void Subscription::readMessage(int events)
       }
     }
     close(subscription_file_fd_);
+
+    const char** args;
+    args = new const char*[1];
+    args[0] = amishare_filename_.c_str();
+    char* datareturn;
+    datareturn = new char[1024];
+    object_read(m_poObjectCreate, 1, args, datareturn);
+    std::cout << "TEBD message: read " << datareturn << "\n";
+    delete[] args;
+    delete datareturn;
   }
 }
 #endif
