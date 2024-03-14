@@ -491,34 +491,44 @@ void Subscription::readMessage(int events)
   {
     boost::mutex::scoped_lock lock(subscription_file_mutex_);
     uint32_t size_to_read;
-    //lseek(subscription_file_fd_, 0, SEEK_SET);
-    subscription_file_fd_ = open(subscription_filename_.c_str(), O_RDONLY, 0666);
-    int32_t bytes_read = read(subscription_file_fd_, &size_to_read, 4);
-    if (size_to_read > 0 && bytes_read > 0)
-    {
-      message_read_buffer_.reset();
-      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
-
-      bytes_read = read(subscription_file_fd_, message_read_buffer_.get(), size_to_read);
-    
-      if (bytes_read < 0) perror("read");
-      if (bytes_read > 0)
-      {
-        SerializedMessage m(message_read_buffer_, bytes_read);
-        handleMessage(m, true, false);
-      }
-    }
-    close(subscription_file_fd_);
 
     const char** args;
     args = new const char*[1];
     args[0] = amishare_filename_.c_str();
-    char* datareturn;
-    datareturn = new char[1024];
-    object_read(m_poObjectCreate, 1, args, datareturn);
-    std::cout << "TEBD message: read " << datareturn << "\n";
+    unsigned char** datareturn;
+    datareturn = new unsigned char *;
+    int datareturnsize;
+    object_read(m_poObjectCreate, 1, args, datareturn, &datareturnsize);
+    memcpy(&size_to_read, *datareturn, 4);
+    std::cout << "TEBD: got size_to_read " << size_to_read << "\n";
+
+    if (size_to_read > 0)
+    {
+      message_read_buffer_.reset();
+      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
+
+      memcpy(message_read_buffer_.get(), (*datareturn + 4), size_to_read);
+      SerializedMessage m(message_read_buffer_, size_to_read);
+      handleMessage(m, true, false);
+    }
     delete[] args;
+    free(*datareturn); // object_read allocates it
     delete datareturn;
+
+    /*
+    const char** args;
+    args = new const char*[1];
+    args[0] = amishare_filename_.c_str();
+    unsigned char** datareturn;
+    datareturn = new unsigned char *;
+    int datareturnsize;
+    object_read(m_poObjectCreate, 1, args, datareturn, &datareturnsize);
+    std::string str(reinterpret_cast<char*>(*datareturn), datareturnsize);
+    std::cout << "TEBD message: read " << str << "\n";
+    delete[] args;
+    free(*datareturn); // object_read allocates it
+    delete datareturn;
+    */
   }
 }
 #endif
