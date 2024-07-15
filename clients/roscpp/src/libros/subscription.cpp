@@ -508,7 +508,7 @@ void Subscription::readMessage(int events)
       message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
 
       memcpy(message_read_buffer_.get(), (*datareturn + 4), size_to_read);
-      SerializedMessage m(message_read_buffer_, size_to_read);
+      SerializedMessage m(message_read_buffer_, 2*size_to_read);
       handleMessage(m, true, false);
     }
     delete[] args;
