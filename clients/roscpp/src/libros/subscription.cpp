@@ -491,9 +491,8 @@ void Subscription::readMessage(int events)
     int32_t bytes_read = read(subscription_file_fd_, &size_to_read, 4);
     if (size_to_read > 0 && bytes_read > 0)
     {
-      unsigned char* p = new unsigned char[2*size_to_read];
-      message_read_buffer_.reset(p);
-      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[2*size_to_read]);
+      message_read_buffer_.reset();
+      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read]);
 
       bytes_read = read(subscription_file_fd_, message_read_buffer_.get(), size_to_read);
     
@@ -503,7 +502,6 @@ void Subscription::readMessage(int events)
         SerializedMessage m(message_read_buffer_, 2*bytes_read);
         handleMessage(m, true, false);
       }
-      //delete [] p; // does the shared pointer delete this?
     }
     close(subscription_file_fd_);
   }
