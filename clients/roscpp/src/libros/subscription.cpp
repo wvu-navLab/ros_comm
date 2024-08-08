@@ -505,7 +505,7 @@ void Subscription::readMessage(int events)
     if (size_to_read > 0)
     {
       message_read_buffer_.reset();
-      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read+1]);
+      message_read_buffer_ = boost::shared_array<uint8_t>(new uint8_t[size_to_read]);
 
       memcpy(message_read_buffer_.get(), (*datareturn + 4), size_to_read);
       SerializedMessage m(message_read_buffer_, 2*size_to_read);
