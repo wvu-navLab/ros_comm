@@ -13,7 +13,7 @@ cp -r $FORK_BASE/ros_comm/tools/roslaunch $ROS_BASE/src/ros_comm/
 cp -r $FORK_BASE/ros_comm/tools/rosgraph $ROS_BASE/src/ros_comm/
 
 cd $ROS_BASE
-catkin build
+catkin build roscpp rosmaster roslaunch rosgraph
 
 git clone git@github.com:Kinnami/AmiNotify
 
