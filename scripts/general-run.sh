@@ -18,10 +18,12 @@ ARGS_LIST=$*
 export ROS_MASTER_URI=http://$LOCAL_IP:11311; export ROS_HOSTNAME=$LOCAL_IP
 
 source $SCRIPT_PATH/amishare-ros-variables.sh
-export FIFO_PATH=/tmp/com_kinnami_amishare_BoxAFSNotify_AmiShareFS-$USER
+export FIFO_PATH=/tmp/com.kinnami.amishare/fifo_AmiShareFS-${USER}.pip
 export REG_FILE=$AMISHARE_PREFIX/registration
 
 roscore -r $REG_FILE > $OUTPUT_PATH/roscoreout.txt 2>&1 &
+#roscore > $OUTPUT_PATH/roscoreout.txt 2>&1 &
+
 echo $! > $SCRIPT_PATH/test-pids.txt
 sleep 1 # roscore needs a moment to start up
 

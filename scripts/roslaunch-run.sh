@@ -14,7 +14,7 @@ source $ROS_BASE/devel/setup.bash
 export ROS_MASTER_URI=http://$LOCAL_IP:11311; export ROS_HOSTNAME=$LOCAL_IP
 
 source $SCRIPT_PATH/amishare-ros-variables.sh
-export FIFO_PATH=/tmp/com_kinnami_amishare_BoxAFSNotify_AmiShareFS-$USER
+export FIFO_PATH=/tmp/com.kinnami.amishare/fifo_AmiShareFS-${USER}.pip
 export REG_FILE=$AMISHARE_PREFIX/registration
 touch $REG_FILE
 

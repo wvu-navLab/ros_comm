@@ -2,7 +2,7 @@
 
 source user-variables.sh
 
-echo "export SOCKET_PATH=/tmp/com_kinnami_amishare_aminotify-$USER" > $SCRIPT_PATH/amishare-ros-variables.sh
+echo "export SOCKET_PATH=/tmp/com.kinnami.amishare/aminotify_AmiShareFS-$USER" > $SCRIPT_PATH/amishare-ros-variables.sh
 echo "export AMISHARE_PREFIX=/media/AmiShareFS-$USER" >> $SCRIPT_PATH/amishare-ros-variables.sh
 source $SCRIPT_PATH/amishare-ros-variables.sh
 
